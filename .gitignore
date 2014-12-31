@@ -7,5 +7,6 @@ TestResults
 *.csproj.user
 *.vcxproj.user
 packages
+ipch
 Debug
 Release
