@@ -93,7 +93,7 @@
  * LZ4_FORCE_SW_BITCOUNT
  * Define this parameter if your target system or compiler does not support hardware bit count
  */
-#if defined(_MSC_VER) && defined(_WIN32_WCE)   /* Visual Studio for Windows CE does not support Hardware bit count */
+#if defined(_MSC_VER) && (defined(_WIN32_WCE) || defined(_M_CEE_PURE))   /* Visual Studio for Windows CE does not support Hardware bit count */
 #  define LZ4_FORCE_SW_BITCOUNT
 #endif
 
