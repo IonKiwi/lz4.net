@@ -1,0 +1,11 @@
+TestResults
+*.dll
+*.pdb
+*.suo
+*.sdf
+*.opensdf
+*.csproj.user
+*.vcxproj.user
+packages
+Debug
+Release
