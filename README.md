@@ -34,21 +34,21 @@ Example:
 
 ```csharp
   // compress data [with content checksum]
-  using (LZ4FramingStream stream = LZ4FramingStream.CreateCompressor(innerStream, LZ4FrameBlockMode.Linked, LZ4FrameBlockSize.Max64KB, LZ4FrameChecksumMode.Content, -1, false)) {
+  using (LZ4Stream stream = LZ4Stream.CreateCompressor(innerStream, LZ4FrameBlockMode.Linked, LZ4FrameBlockSize.Max64KB, LZ4FrameChecksumMode.Content, -1, false)) {
     // write uncompressed data to the lz4 stream
 	// the stream will compress the data and write it to the innerStream
 	stream.Write(buffer, 0, buffer.Length);	
   }
   
   // compress data [with block and content checksum, start a new frame after 100 data blocks]
-  using (LZ4FramingStream stream = LZ4FramingStream.CreateCompressor(innerStream, LZ4FrameBlockMode.Linked, LZ4FrameBlockSize.Max64KB, LZ4FrameChecksumMode.Block | LZ4FrameChecksumMode.Content, 100, false)) {
+  using (LZ4Stream stream = LZ4Stream.CreateCompressor(innerStream, LZ4FrameBlockMode.Linked, LZ4FrameBlockSize.Max64KB, LZ4FrameChecksumMode.Block | LZ4FrameChecksumMode.Content, 100, false)) {
     // write uncompressed data to the lz4 stream
 	// the stream will compress the data and write it to the innerStream
 	stream.Write(buffer, 0, buffer.Length);	
   }
   
   // decompress data
-  using (LZ4FramingStream stream = LZ4FramingStream.CreateDecompressor(innerStream, false)) {
+  using (LZ4Stream stream = LZ4Stream.CreateDecompressor(innerStream, false)) {
     // the lz4 stream will read the compressed data from the innerStream
     // and return the uncompressed data in 'buffer'
 	int bytesRead = stream.Read(buffer, 0, buffer.Length)
@@ -67,14 +67,14 @@ Example:
 
 ```csharp
   // compress data
-  using (LZ4Stream stream = new LZ4Stream(tmpFile1, CompressionMode.Compress) {
+  using (LZ4MinimalFrameFormatStream stream = new LZ4MinimalFrameFormatStream(tmpFile1, CompressionMode.Compress) {
 	// write uncompressed data to the lz4 stream
 	// the stream will compress the data and write it to the innerStream
 	stream.Write(buffer, 0, buffer.Length);	
   }
   
   // decompress data
-  using (LZ4Stream stream = new LZ4Stream(innerStream, CompressionMode.Decompress)) {
+  using (LZ4MinimalFrameFormatStream stream = new LZ4MinimalFrameFormatStream(innerStream, CompressionMode.Decompress)) {
     // the lz4 stream will read the compressed data from the innerStream
     // and return the uncompressed data in 'buffer'
 	int bytesRead = stream.Read(buffer, 0, buffer.Length)
@@ -82,5 +82,5 @@ Example:
 ```
 
 NOTE:
- - LZ4Stream contains a ctor to specify the size of the ringbuffer, the ringbuffer used for encoding and decoding need to be sychronized, i.e. use the same (ring)buffer sizes for encoding and decoding.  
- - Although the frame format of LZ4Stream is shorter, it is probably better to use LZ4FramingStream as it has more options (like a content checksum) and is readable by the lz4 command line tools.  
+ - LZ4MinimalFrameFormatStream contains a ctor to specify the size of the ringbuffer, the ringbuffer used for encoding and decoding need to be sychronized, i.e. use the same (ring)buffer sizes for encoding and decoding.  
+ - Although the frame format of LZ4MinimalFrameFormatStream is shorter, it is probably better to use LZ4Stream as it has more options (like a content checksum) and is readable by the lz4 command line tools.  
