@@ -139,7 +139,7 @@
     <ClInclude Include="lz4FramingStream.h" />
     <ClInclude Include="lz4hc.h" />
     <ClInclude Include="lz4Helper.h" />
-    <ClInclude Include="lz4Stream.h" />
+    <ClInclude Include="lz4MinimalFrameFormatStream.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Stdafx.h" />
     <ClInclude Include="xxhash.h" />
@@ -150,7 +150,7 @@
     <ClCompile Include="lz4FramingStream.cpp" />
     <ClCompile Include="lz4hc.cpp" />
     <ClCompile Include="lz4Helper.cpp" />
-    <ClCompile Include="lz4Stream.cpp" />
+    <ClCompile Include="lz4MinimalFrameFormatStream.cpp" />
     <ClCompile Include="Stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

@@ -38,7 +38,7 @@ using namespace System::IO::Compression;
 
 namespace lz4 {
 
-	public ref class LZ4Stream : Stream
+	public ref class LZ4MinimalFrameFormatStream : Stream
 	{
 	private:
 		typedef unsigned char byte;
@@ -73,11 +73,11 @@ namespace lz4 {
 		
 		void InitRingbuffer();
 	public:
-		LZ4Stream(Stream^ innerStream, CompressionMode compressionMode, bool leaveInnerStreamOpen);
-		LZ4Stream(Stream^ innerStream, CompressionMode compressionMode, int blockSize, bool leaveInnerStreamOpen);
-		LZ4Stream(Stream^ innerStream, CompressionMode compressionMode, int blockSize, int ringbufferSlots, bool leaveInnerStreamOpen);
-		~LZ4Stream();
-		!LZ4Stream();
+		LZ4MinimalFrameFormatStream(Stream^ innerStream, CompressionMode compressionMode, bool leaveInnerStreamOpen);
+		LZ4MinimalFrameFormatStream(Stream^ innerStream, CompressionMode compressionMode, int blockSize, bool leaveInnerStreamOpen);
+		LZ4MinimalFrameFormatStream(Stream^ innerStream, CompressionMode compressionMode, int blockSize, int ringbufferSlots, bool leaveInnerStreamOpen);
+		~LZ4MinimalFrameFormatStream();
+		!LZ4MinimalFrameFormatStream();
 
 		property virtual bool CanRead {
 			bool get() override {
