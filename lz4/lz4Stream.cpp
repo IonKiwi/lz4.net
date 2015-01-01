@@ -29,7 +29,7 @@
    source repository: https://github.com/IonKiwi/lz4.net
    */
 
-#include "lz4FramingStream.h"
+#include "lz4Stream.h"
 #include "lz4.h"
 #include "xxhash.h"
 
@@ -40,14 +40,14 @@ typedef unsigned int        U32;
 
 namespace lz4 {
 
-	LZ4FramingStream::LZ4FramingStream() {
+	LZ4Stream::LZ4Stream() {
 
 	}
 
-	LZ4FramingStream^ LZ4FramingStream::CreateCompressor(Stream^ innerStream, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, long long maxFrameSize, bool leaveInnerStreamOpen) {
+	LZ4Stream^ LZ4Stream::CreateCompressor(Stream^ innerStream, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, long long maxFrameSize, bool leaveInnerStreamOpen) {
 		if (innerStream == nullptr) { throw gcnew ArgumentNullException("innerStream"); }
 
-		LZ4FramingStream^ result = gcnew LZ4FramingStream();
+		LZ4Stream^ result = gcnew LZ4Stream();
 		result->_innerStream = innerStream;
 		result->_compressionMode = CompressionMode::Compress;
 		result->_checksumMode = checksumMode;
@@ -60,10 +60,10 @@ namespace lz4 {
 		return result;
 	}
 
-	LZ4FramingStream^ LZ4FramingStream::CreateDecompressor(Stream^ innerStream, bool leaveInnerStreamOpen) {
+	LZ4Stream^ LZ4Stream::CreateDecompressor(Stream^ innerStream, bool leaveInnerStreamOpen) {
 		if (innerStream == nullptr) { throw gcnew ArgumentNullException("innerStream"); }
 
-		LZ4FramingStream^ result = gcnew LZ4FramingStream();
+		LZ4Stream^ result = gcnew LZ4Stream();
 		result->_innerStream = innerStream;
 		result->_compressionMode = CompressionMode::Decompress;
 		result->_leaveInnerStreamOpen = leaveInnerStreamOpen;
@@ -72,21 +72,21 @@ namespace lz4 {
 		return result;
 	}
 
-	LZ4FramingStream::~LZ4FramingStream() {
+	LZ4Stream::~LZ4Stream() {
 		if (CanWrite) { WriteEndFrame(); }
 		if (!_leaveInnerStreamOpen) {
 			delete _innerStream;
 		}
-		this->!LZ4FramingStream();
+		this->!LZ4Stream();
 	}
 
-	LZ4FramingStream::!LZ4FramingStream() {
+	LZ4Stream::!LZ4Stream() {
 		if (_lz4Stream != nullptr) { LZ4_freeStream(_lz4Stream); _lz4Stream = nullptr; }
 		if (_contentHashState != nullptr) { delete _contentHashState; _contentHashState = nullptr; }
 		if (_lz4DecodeStream != nullptr) { LZ4_freeStreamDecode(_lz4DecodeStream); _lz4DecodeStream = nullptr; }
 	}
 
-	void LZ4FramingStream::Init() {
+	void LZ4Stream::Init() {
 		if (_compressionMode == CompressionMode::Compress) {
 			_lz4Stream = LZ4_createStream();
 
@@ -131,39 +131,39 @@ namespace lz4 {
 		}
 	}
 
-	bool LZ4FramingStream::Get_CanRead() {
+	bool LZ4Stream::Get_CanRead() {
 		return _compressionMode == CompressionMode::Decompress;
 	}
 
-	bool LZ4FramingStream::Get_CanSeek() {
+	bool LZ4Stream::Get_CanSeek() {
 		return false;
 	}
 
-	bool LZ4FramingStream::Get_CanWrite() {
+	bool LZ4Stream::Get_CanWrite() {
 		return _compressionMode == CompressionMode::Compress;
 	}
 
-	long long LZ4FramingStream::Get_Length() {
+	long long LZ4Stream::Get_Length() {
 		return -1;
 	}
 
-	long long LZ4FramingStream::Get_Position() {
+	long long LZ4Stream::Get_Position() {
 		return -1;
 	}
 
-	long long LZ4FramingStream::Seek(long long offset, SeekOrigin origin) {
+	long long LZ4Stream::Seek(long long offset, SeekOrigin origin) {
 		throw gcnew NotSupportedException("Seek");
 	}
 
-	void LZ4FramingStream::SetLength(long long value) {
+	void LZ4Stream::SetLength(long long value) {
 		throw gcnew NotSupportedException("SetLength");
 	}
 
-	void LZ4FramingStream::Flush() {
+	void LZ4Stream::Flush() {
 		if (_inputBufferOffset > 0 && CanWrite) { FlushCurrentBlock(false); }
 	}
 
-	void LZ4FramingStream::WriteEndFrame() {
+	void LZ4Stream::WriteEndFrame() {
 		if (!CanWrite) { throw gcnew NotSupportedException("Write"); }
 
 		if (!_hasWrittenInitialStartFrame) {
@@ -207,7 +207,7 @@ namespace lz4 {
 		_hasWrittenStartFrame = false;
 	}
 
-	void LZ4FramingStream::WriteStartFrame() {
+	void LZ4Stream::WriteStartFrame() {
 		_hasWrittenStartFrame = true;
 		_hasWrittenInitialStartFrame = true;
 		_frameCount++;
@@ -279,7 +279,7 @@ namespace lz4 {
 		_innerStream->WriteByte((xxh >> 8) & 0xFF);
 	}
 
-	void LZ4FramingStream::WriteEmptyFrame() {
+	void LZ4Stream::WriteEmptyFrame() {
 		if (!CanWrite) { throw gcnew NotSupportedException("Write"); }
 
 		if (_hasWrittenStartFrame || _hasWrittenInitialStartFrame) {
@@ -330,7 +330,7 @@ namespace lz4 {
 		_frameCount++;
 	}
 
-	void LZ4FramingStream::WriteUserDataFrame(int id, array<byte>^ buffer, int offset, int count) {
+	void LZ4Stream::WriteUserDataFrame(int id, array<byte>^ buffer, int offset, int count) {
 		if (!CanWrite) { throw gcnew NotSupportedException("Write"); }
 
 		if (id < 0 || id > 15) { throw gcnew ArgumentOutOfRangeException("id"); }
@@ -368,7 +368,7 @@ namespace lz4 {
 		_innerStream->Write(buffer, offset, count);
 	}
 
-	void LZ4FramingStream::FlushCurrentBlock(bool suppressEndFrame) {
+	void LZ4Stream::FlushCurrentBlock(bool suppressEndFrame) {
 
 		pin_ptr<byte> inputBufferPtr = &_inputBuffer[_ringbufferOffset];
 		pin_ptr<byte> outputBufferPtr = &_outputBuffer[0];
@@ -448,7 +448,7 @@ namespace lz4 {
 		if (_ringbufferOffset > _inputBufferSize) _ringbufferOffset = 0;
 	}
 
-	bool LZ4FramingStream::GetFrameInfo() {
+	bool LZ4Stream::GetFrameInfo() {
 
 		if (_hasFrameInfo) {
 			throw gcnew Exception("should not have happend, _hasFrameInfo: " + _hasFrameInfo);
@@ -604,7 +604,7 @@ namespace lz4 {
 		}
 	}
 
-	bool LZ4FramingStream::AcquireNextBlock() {
+	bool LZ4Stream::AcquireNextBlock() {
 		if (!_hasFrameInfo) {
 			if (!GetFrameInfo()) {
 				return false;
@@ -718,7 +718,7 @@ namespace lz4 {
 		return true;
 	}
 
-	int LZ4FramingStream::ReadByte() {
+	int LZ4Stream::ReadByte() {
 		if (!CanRead) { throw gcnew NotSupportedException("Read"); }
 
 		if (_outputBufferOffset >= _outputBufferBlockSize && !AcquireNextBlock())
@@ -726,7 +726,7 @@ namespace lz4 {
 		return _outputBuffer[_ringbufferOffset + _outputBufferOffset++];
 	}
 
-	int LZ4FramingStream::Read(array<byte>^ buffer, int offset, int count) {
+	int LZ4Stream::Read(array<byte>^ buffer, int offset, int count) {
 		if (!CanRead) { throw gcnew NotSupportedException("Read"); }
 		else if (buffer == nullptr) { throw gcnew ArgumentNullException("buffer"); }
 		else if (offset < 0) { throw gcnew ArgumentOutOfRangeException("offset"); }
@@ -754,7 +754,7 @@ namespace lz4 {
 		return total;
 	}
 
-	void LZ4FramingStream::WriteByte(byte value) {
+	void LZ4Stream::WriteByte(byte value) {
 		if (!CanWrite) { throw gcnew NotSupportedException("Write"); }
 
 		if (!_hasWrittenStartFrame) { WriteStartFrame(); }
@@ -767,7 +767,7 @@ namespace lz4 {
 		_inputBuffer[_ringbufferOffset + _inputBufferOffset++] = value;
 	}
 
-	void LZ4FramingStream::Write(array<byte>^ buffer, int offset, int count) {
+	void LZ4Stream::Write(array<byte>^ buffer, int offset, int count) {
 		if (!CanWrite) { throw gcnew NotSupportedException("Write"); }
 		else if (buffer == nullptr) { throw gcnew ArgumentNullException("buffer"); }
 		else if (offset < 0) { throw gcnew ArgumentOutOfRangeException("offset"); }

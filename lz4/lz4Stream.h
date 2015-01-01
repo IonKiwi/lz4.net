@@ -72,12 +72,12 @@ namespace lz4 {
 		property array<byte>^ Data { array<byte>^ get() { return _data; }; };
 	};
 
-	public ref class LZ4FramingStream : Stream
+	public ref class LZ4Stream : Stream
 	{
 	private:
 		typedef unsigned char byte;
 
-		LZ4FramingStream();
+		LZ4Stream();
 
 		Stream^ _innerStream;
 		CompressionMode _compressionMode;
@@ -127,11 +127,11 @@ namespace lz4 {
 		}
 
 	public:
-		~LZ4FramingStream();
-		!LZ4FramingStream();
+		~LZ4Stream();
+		!LZ4Stream();
 
-		static LZ4FramingStream^ CreateCompressor(Stream^ innerStream, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, long long maxFrameSize, bool leaveInnerStreamOpen);
-		static LZ4FramingStream^ CreateDecompressor(Stream^ innerStream, bool leaveInnerStreamOpen);
+		static LZ4Stream^ CreateCompressor(Stream^ innerStream, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, long long maxFrameSize, bool leaveInnerStreamOpen);
+		static LZ4Stream^ CreateDecompressor(Stream^ innerStream, bool leaveInnerStreamOpen);
 
 		void WriteEndFrame();
 		void WriteUserDataFrame(int id, array<byte>^ buffer, int offset, int count);
