@@ -29,7 +29,7 @@
    source repository: https://github.com/IonKiwi/lz4.net
    */
 
-#include "lz4Stream.h"
+#include "lz4MinimalFrameFormatStream.h"
 #include "lz4.h"
 #include "lz4hc.h"
 
@@ -37,7 +37,7 @@
 
 namespace lz4 {
 
-	LZ4Stream::LZ4Stream(Stream^ innerStream, CompressionMode compressionMode, bool leaveInnerStreamOpen) {
+	LZ4MinimalFrameFormatStream::LZ4MinimalFrameFormatStream(Stream^ innerStream, CompressionMode compressionMode, bool leaveInnerStreamOpen) {
 
 		if (innerStream == nullptr) { throw gcnew ArgumentNullException("innerStream"); }
 
@@ -49,7 +49,7 @@ namespace lz4 {
 		InitRingbuffer();
 	}
 
-	LZ4Stream::LZ4Stream(Stream^ innerStream, CompressionMode compressionMode, int blockSize, bool leaveInnerStreamOpen) {
+	LZ4MinimalFrameFormatStream::LZ4MinimalFrameFormatStream(Stream^ innerStream, CompressionMode compressionMode, int blockSize, bool leaveInnerStreamOpen) {
 
 		if (innerStream == nullptr) { throw gcnew ArgumentNullException("innerStream"); }
 		else if (blockSize < 1) {
@@ -69,7 +69,7 @@ namespace lz4 {
 		InitRingbuffer();
 	}
 
-	LZ4Stream::LZ4Stream(Stream^ innerStream, CompressionMode compressionMode, int blockSize, int ringbufferSlots, bool leaveInnerStreamOpen) {
+	LZ4MinimalFrameFormatStream::LZ4MinimalFrameFormatStream(Stream^ innerStream, CompressionMode compressionMode, int blockSize, int ringbufferSlots, bool leaveInnerStreamOpen) {
 
 		if (innerStream == nullptr) { throw gcnew ArgumentNullException("innerStream"); }
 		else if (blockSize < 1) {
@@ -87,21 +87,21 @@ namespace lz4 {
 		InitRingbuffer();
 	}
 
-	LZ4Stream::~LZ4Stream() {
+	LZ4MinimalFrameFormatStream::~LZ4MinimalFrameFormatStream() {
 		Flush();
 		if (!_leaveInnerStreamOpen) {
 			delete _innerStream;
 		}
-		this->!LZ4Stream();
+		this->!LZ4MinimalFrameFormatStream();
 	}
 
-	LZ4Stream::!LZ4Stream() {
+	LZ4MinimalFrameFormatStream::!LZ4MinimalFrameFormatStream() {
 		if (_lz4DecodeStream != nullptr) { LZ4_freeStreamDecode(_lz4DecodeStream); _lz4DecodeStream = nullptr; }
 		if (_lz4Stream != nullptr) { LZ4_freeStream(_lz4Stream); _lz4Stream = nullptr; }
 		delete[] _ringbuffer; _ringbuffer = nullptr;
 	}
 
-	void LZ4Stream::InitRingbuffer() {
+	void LZ4MinimalFrameFormatStream::InitRingbuffer() {
 		_ringbufferSize = _ringbufferSlots * _blockSize; // +_blockSize;
 		_ringbuffer = new char[_ringbufferSize];
 		if (_ringbuffer == nullptr) {
@@ -116,7 +116,7 @@ namespace lz4 {
 		}
 	}
 
-	void LZ4Stream::FlushCurrentChunk() {
+	void LZ4MinimalFrameFormatStream::FlushCurrentChunk() {
 		if (_inputBufferOffset <= 0) { return; }
 
 		char *inputPtr = &_ringbuffer[_ringbufferOffset];
@@ -148,7 +148,7 @@ namespace lz4 {
 		_inputBufferOffset = 0;
 	}
 
-	bool LZ4Stream::AcquireNextChunk() {
+	bool LZ4MinimalFrameFormatStream::AcquireNextChunk() {
 
 		// read chunk size
 		array<byte>^ sizeBuffer = gcnew array<byte>(4);
@@ -187,31 +187,31 @@ namespace lz4 {
 		return true;
 	}
 
-	bool LZ4Stream::Get_CanRead() {
+	bool LZ4MinimalFrameFormatStream::Get_CanRead() {
 		return _compressionMode == CompressionMode::Decompress;
 	}
 
-	bool LZ4Stream::Get_CanSeek() {
+	bool LZ4MinimalFrameFormatStream::Get_CanSeek() {
 		return false;
 	}
 
-	bool LZ4Stream::Get_CanWrite() {
+	bool LZ4MinimalFrameFormatStream::Get_CanWrite() {
 		return _compressionMode == CompressionMode::Compress;
 	}
 
-	long long LZ4Stream::Get_Length() {
+	long long LZ4MinimalFrameFormatStream::Get_Length() {
 		return -1;
 	}
 
-	long long LZ4Stream::Get_Position() {
+	long long LZ4MinimalFrameFormatStream::Get_Position() {
 		return -1;
 	}
 
-	void LZ4Stream::Flush() {
+	void LZ4MinimalFrameFormatStream::Flush() {
 		if (_inputBufferOffset > 0 && CanWrite) { FlushCurrentChunk(); };
 	}
 
-	int LZ4Stream::ReadByte() {
+	int LZ4MinimalFrameFormatStream::ReadByte() {
 		if (!CanRead) { throw gcnew NotSupportedException("Read"); }
 
 		if (_inputBufferOffset >= _inputBufferLength && !AcquireNextChunk())
@@ -219,7 +219,7 @@ namespace lz4 {
 		return _ringbuffer[_ringbufferOffset + _inputBufferOffset++];
 	}
 
-	int LZ4Stream::Read(array<byte>^ buffer, int offset, int count) {
+	int LZ4MinimalFrameFormatStream::Read(array<byte>^ buffer, int offset, int count) {
 		if (!CanRead) { throw gcnew NotSupportedException("Read"); }
 
 		int total = 0;
@@ -246,15 +246,15 @@ namespace lz4 {
 		return total;
 	}
 
-	long long LZ4Stream::Seek(long long offset, SeekOrigin origin) {
+	long long LZ4MinimalFrameFormatStream::Seek(long long offset, SeekOrigin origin) {
 		throw gcnew NotSupportedException("Seek");
 	}
 
-	void LZ4Stream::SetLength(long long value) {
+	void LZ4MinimalFrameFormatStream::SetLength(long long value) {
 		throw gcnew NotSupportedException("SetLength");
 	}
 
-	void LZ4Stream::WriteByte(byte value) {
+	void LZ4MinimalFrameFormatStream::WriteByte(byte value) {
 		if (!CanWrite) { throw gcnew NotSupportedException("Write"); }
 
 		if (_inputBufferOffset >= _blockSize)
@@ -265,7 +265,7 @@ namespace lz4 {
 		_ringbuffer[_ringbufferOffset + _inputBufferOffset++] = value;
 	}
 
-	void LZ4Stream::Write(array<byte>^ buffer, int offset, int count) {
+	void LZ4MinimalFrameFormatStream::Write(array<byte>^ buffer, int offset, int count) {
 		if (!CanWrite) { throw gcnew NotSupportedException("Write"); }
 
 		while (count > 0)
