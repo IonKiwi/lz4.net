@@ -344,6 +344,10 @@ namespace lz4 {
 			WriteEmptyFrame();
 		}
 
+		if (_hasWrittenStartFrame) {
+			WriteEndFrame();
+		}
+
 		// write magic
 		array<byte>^ magic = gcnew array<byte>(4);
 		magic[0] = (0x50 + id);
