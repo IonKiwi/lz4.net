@@ -34,7 +34,7 @@
 #include "lz4hc.h"
 
 namespace lz4 {
-	array<Byte>^ LZ4Helper::Compress(array<Byte>^ input, int inputOffset, int inputLength, int passes)
+	array<Byte>^ LZ4Helper::Custom::Compress(array<Byte>^ input, int inputOffset, int inputLength, int passes)
 	{
 		if (input == nullptr) {
 			throw gcnew ArgumentNullException("input");
@@ -115,7 +115,7 @@ namespace lz4 {
 		return slimResult;
 	}
 
-	array<Byte>^ LZ4Helper::Decompress(array<Byte>^ input, int inputOffset, int inputLength)
+	array<Byte>^ LZ4Helper::Custom::Decompress(array<Byte>^ input, int inputOffset, int inputLength)
 	{
 		if (input == nullptr) {
 			throw gcnew ArgumentNullException("input");
@@ -187,5 +187,87 @@ namespace lz4 {
 		array<Byte>^ slimResult = gcnew array<Byte>(bufferSize3);
 		Buffer::BlockCopy(result2, 0, slimResult, 0, bufferSize3);
 		return slimResult;
+	}
+
+	array<Byte>^ LZ4Helper::Frame::Compress(array<Byte>^ input, int inputOffset, int inputLength, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, long long maxFrameSize)
+	{
+		if (input == nullptr) {
+			throw gcnew ArgumentNullException("input");
+		}
+		else if (inputOffset < 0) {
+			throw gcnew ArgumentOutOfRangeException("inputOffset");
+		}
+		else if (inputLength <= 0) {
+			throw gcnew ArgumentOutOfRangeException("inputLength");
+		}
+		else if (inputOffset + inputLength > input->Length) {
+			throw gcnew ArgumentOutOfRangeException("inputOffset+inputLength");
+		}
+
+		MemoryStream^ ms = nullptr;
+		array<Byte>^ result;
+		try
+		{
+			ms = gcnew MemoryStream();
+			LZ4Stream^ lz4 = nullptr;
+			try
+			{
+				lz4 = LZ4Stream::CreateCompressor(ms, blockMode, blockSize, checksumMode, maxFrameSize, true);
+				lz4->Write(input, inputOffset, inputLength);
+			}
+			finally
+			{
+				if (lz4 != nullptr) { delete lz4; }
+			}
+			result = ms->ToArray();
+		}
+		finally
+		{
+			if (ms != nullptr) { delete ms; }
+		}
+
+		return result;
+	}
+
+	array<Byte>^ LZ4Helper::Frame::Decompress(array<Byte>^ input, int inputOffset, int inputLength)
+	{
+		if (input == nullptr) {
+			throw gcnew ArgumentNullException("input");
+		}
+		else if (inputOffset < 0) {
+			throw gcnew ArgumentOutOfRangeException("inputOffset");
+		}
+		else if (inputLength < 3) {
+			throw gcnew ArgumentOutOfRangeException("inputLength");
+		}
+		else if (inputOffset + inputLength > input->Length) {
+			throw gcnew ArgumentOutOfRangeException("inputOffset+inputLength");
+		}
+
+		MemoryStream ^ms = nullptr, ^ms2 = nullptr;
+		array<Byte>^ result;
+		try
+		{
+			ms = gcnew MemoryStream(input, inputOffset, inputLength);
+			ms2 = gcnew MemoryStream();
+			LZ4Stream^ lz4 = nullptr;
+			try
+			{
+				lz4 = LZ4Stream::CreateDecompressor(ms, true);
+				lz4->CopyTo(ms2);
+			}
+			finally
+			{
+				if (lz4 != nullptr) { delete lz4; }
+			}
+			result = ms2->ToArray();
+		}
+		finally
+		{
+			if (ms != nullptr) { delete ms; }
+			if (ms2 != nullptr) { delete ms2; }
+		}
+
+		return result;
 	}
 }

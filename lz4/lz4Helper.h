@@ -30,25 +30,46 @@
 
 #pragma once
 
+#include "lz4stream.h"
+
 using namespace System;
 
 namespace lz4 {
 
-	public ref class LZ4Helper
+	public ref class LZ4Helper abstract sealed
 	{
 	private:
 		typedef unsigned char byte;
 
 	public:
-		static inline array<Byte>^ Compress(array<Byte>^ input)
+		ref class Custom abstract sealed
 		{
-			return Compress(input, 0, input->Length, 1);
-		}
-		static array<Byte>^ Compress(array<Byte>^ input, int inputOffset, int inputLength, int passes);
-		static inline array<Byte>^ Decompress(array<Byte>^ input)
+		public:
+			static inline array<Byte>^ Compress(array<Byte>^ input)
+			{
+				return Compress(input, 0, input->Length, 1);
+			}
+			static array<Byte>^ Compress(array<Byte>^ input, int inputOffset, int inputLength, int passes);
+			static inline array<Byte>^ Decompress(array<Byte>^ input)
+			{
+				return Decompress(input, 0, input->Length);
+			}
+			static array<Byte>^ Decompress(array<Byte>^ input, int inputOffset, int inputLength);
+		};
+
+		ref class Frame abstract sealed
 		{
-			return Decompress(input, 0, input->Length);
-		}
-		static array<Byte>^ Decompress(array<Byte>^ input, int inputOffset, int inputLength);
+		public:
+			static inline array<Byte>^ Compress(array<Byte>^ input, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, long long maxFrameSize)
+			{
+				return Compress(input, 0, input->Length, blockMode, blockSize, checksumMode, maxFrameSize);
+			}
+			static array<Byte>^ Compress(array<Byte>^ input, int inputOffset, int inputLength, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, long long maxFrameSize);
+			static inline array<Byte>^ Decompress(array<Byte>^ input)
+			{
+				return Decompress(input, 0, input->Length);
+			}
+			static array<Byte>^ Decompress(array<Byte>^ input, int inputOffset, int inputLength);
+		};
 	};
 }
