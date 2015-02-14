@@ -58,7 +58,7 @@ namespace lz4 {
 		Block = 0x2,
 	};
 
-	public ref class LZ4UserDataFrameEventArgs : EventArgs
+	public ref class LZ4UserDataFrameEventArgs sealed : EventArgs
 	{
 	private:
 		typedef unsigned char byte;

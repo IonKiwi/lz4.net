@@ -366,6 +366,8 @@ namespace lz4 {
 
 		// write data
 		_innerStream->Write(buffer, offset, count);
+
+		_frameCount++;
 	}
 
 	void LZ4Stream::FlushCurrentBlock(bool suppressEndFrame) {
@@ -397,7 +399,17 @@ namespace lz4 {
 			// compression failed or output is too large
 
 			// reset the stream [is this necessary??]
-			LZ4_loadDict(_lz4Stream, nullptr, 0);
+			//LZ4_loadDict(_lz4Stream, nullptr, 0);
+
+			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
+			targetSize = _inputBufferOffset;
+			isCompressed = false;
+		}
+		else if (outputBytes >= _inputBufferOffset) {
+			// compressed size is bigger than input size
+
+			// reset the stream [is this necessary??]
+			//LZ4_loadDict(_lz4Stream, nullptr, 0);
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;
@@ -438,7 +450,7 @@ namespace lz4 {
 		_inputBufferOffset = 0; // reset before calling WriteEndFrame() !!
 		_blockCount++;
 
-		if (_maxFrameSize > 0 && _blockCount >= _maxFrameSize) {
+		if (!suppressEndFrame && _maxFrameSize > 0 && _blockCount >= _maxFrameSize) {
 			WriteEndFrame();
 		}
 
@@ -589,7 +601,7 @@ namespace lz4 {
 
 			array<byte>^ userData = gcnew array<byte>(frameSize);
 			bytesRead = _innerStream->Read(userData, 0, userData->Length);
-			if (bytesRead != b->Length) { throw gcnew EndOfStreamException("Unexpected end of stream"); }
+			if (bytesRead != userData->Length) { throw gcnew EndOfStreamException("Unexpected end of stream"); }
 
 			int id = (magic[0] & 0xF);
 
