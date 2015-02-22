@@ -51,6 +51,11 @@ namespace lz4 {
 		Independent,
 	};
 
+	public enum class LZ4StreamMode {
+		Read,
+		Write,
+	};
+
 	[FlagsAttribute]
 	public enum class LZ4FrameChecksumMode {
 		None = 0x0,
@@ -80,11 +85,20 @@ namespace lz4 {
 		LZ4Stream();
 
 		Stream^ _innerStream;
+
+		array<Byte> ^_headerBuffer = gcnew array<Byte>(23);
+		int _headerBufferSize = 0;
+		int _currentMode = 0;
+
+		int _targetBufferSize = 0;
+		bool _isCompressed = false;
+
 		CompressionMode _compressionMode;
 		LZ4FrameBlockSize _blockSize = LZ4FrameBlockSize::Max64KB;
 		LZ4FrameBlockMode _blockMode = LZ4FrameBlockMode::Linked;
 		LZ4FrameChecksumMode _checksumMode = LZ4FrameChecksumMode::None;
-		long long _maxFrameSize = -1;
+		LZ4StreamMode _streamMode;
+		Nullable<long long> _maxFrameSize = Nullable<long long>();
 		bool _leaveInnerStreamOpen;
 		bool _hasWrittenStartFrame = false;
 		bool _hasWrittenInitialStartFrame = false;
@@ -108,6 +122,10 @@ namespace lz4 {
 		void FlushCurrentBlock(bool suppressEndFrame);
 		bool GetFrameInfo();
 		bool AcquireNextBlock();
+		
+		int DecompressBlock(array<Byte>^ data, int offset, int count);
+		void DecompressData(array<Byte>^ data, int offset, int count);
+		int DecompressHeader(array<Byte>^ data, int offset, int count);
 
 		LZ4_stream_t *_lz4Stream = nullptr;
 		LZ4_streamDecode_t *_lz4DecodeStream = nullptr;
@@ -118,6 +136,13 @@ namespace lz4 {
 		bool Get_CanWrite();
 		long long Get_Length();
 		long long Get_Position();
+
+		void CompressNextBlock();
+		int CompressData(array<byte>^ buffer, int offset, int count);
+		void WriteHeaderData(array<byte>^ buffer, int offset, int count);
+
+		void WriteEndFrameInternal();
+		void WriteUserDataFrameInternal(int id, array<byte>^ buffer, int offset, int count);
 
 	internal:
 		property long long CurrentBlockCount {
@@ -130,8 +155,8 @@ namespace lz4 {
 		~LZ4Stream();
 		!LZ4Stream();
 
-		static LZ4Stream^ CreateCompressor(Stream^ innerStream, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, long long maxFrameSize, bool leaveInnerStreamOpen);
-		static LZ4Stream^ CreateDecompressor(Stream^ innerStream, bool leaveInnerStreamOpen);
+		static LZ4Stream^ CreateCompressor(Stream^ innerStream, LZ4StreamMode streamMode, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, Nullable<long long> maxFrameSize, bool leaveInnerStreamOpen);
+		static LZ4Stream^ CreateDecompressor(Stream^ innerStream, LZ4StreamMode streamMode, bool leaveInnerStreamOpen);
 
 		void WriteEndFrame();
 		void WriteUserDataFrame(int id, array<byte>^ buffer, int offset, int count);

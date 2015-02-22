@@ -189,7 +189,7 @@ namespace lz4 {
 		return slimResult;
 	}
 
-	array<Byte>^ LZ4Helper::Frame::Compress(array<Byte>^ input, int inputOffset, int inputLength, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, long long maxFrameSize)
+	array<Byte>^ LZ4Helper::Frame::Compress(array<Byte>^ input, int inputOffset, int inputLength, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, Nullable<long long> maxFrameSize)
 	{
 		if (input == nullptr) {
 			throw gcnew ArgumentNullException("input");
@@ -212,7 +212,7 @@ namespace lz4 {
 			LZ4Stream^ lz4 = nullptr;
 			try
 			{
-				lz4 = LZ4Stream::CreateCompressor(ms, blockMode, blockSize, checksumMode, maxFrameSize, true);
+				lz4 = LZ4Stream::CreateCompressor(ms, LZ4StreamMode::Write, blockMode, blockSize, checksumMode, maxFrameSize, true);
 				lz4->Write(input, inputOffset, inputLength);
 			}
 			finally
@@ -244,28 +244,26 @@ namespace lz4 {
 			throw gcnew ArgumentOutOfRangeException("inputOffset+inputLength");
 		}
 
-		MemoryStream ^ms = nullptr, ^ms2 = nullptr;
+		MemoryStream ^ms = nullptr;
 		array<Byte>^ result;
 		try
 		{
-			ms = gcnew MemoryStream(input, inputOffset, inputLength);
-			ms2 = gcnew MemoryStream();
+			ms = gcnew MemoryStream();
 			LZ4Stream^ lz4 = nullptr;
 			try
 			{
-				lz4 = LZ4Stream::CreateDecompressor(ms, true);
-				lz4->CopyTo(ms2);
+				lz4 = LZ4Stream::CreateDecompressor(ms, LZ4StreamMode::Write, true);
+				lz4->Write(input, inputOffset, inputLength);
 			}
 			finally
 			{
 				if (lz4 != nullptr) { delete lz4; }
 			}
-			result = ms2->ToArray();
+			result = ms->ToArray();
 		}
 		finally
 		{
 			if (ms != nullptr) { delete ms; }
-			if (ms2 != nullptr) { delete ms2; }
 		}
 
 		return result;

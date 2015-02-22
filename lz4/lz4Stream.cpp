@@ -44,10 +44,12 @@ namespace lz4 {
 
 	}
 
-	LZ4Stream^ LZ4Stream::CreateCompressor(Stream^ innerStream, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, long long maxFrameSize, bool leaveInnerStreamOpen) {
+	LZ4Stream^ LZ4Stream::CreateCompressor(Stream^ innerStream, LZ4StreamMode streamMode, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, Nullable<long long> maxFrameSize, bool leaveInnerStreamOpen) {
 		if (innerStream == nullptr) { throw gcnew ArgumentNullException("innerStream"); }
+		if (maxFrameSize.HasValue && maxFrameSize.Value <= 0) { throw gcnew ArgumentOutOfRangeException("maxFrameSize"); }
 
 		LZ4Stream^ result = gcnew LZ4Stream();
+		result->_streamMode = streamMode;
 		result->_innerStream = innerStream;
 		result->_compressionMode = CompressionMode::Compress;
 		result->_checksumMode = checksumMode;
@@ -60,10 +62,11 @@ namespace lz4 {
 		return result;
 	}
 
-	LZ4Stream^ LZ4Stream::CreateDecompressor(Stream^ innerStream, bool leaveInnerStreamOpen) {
+	LZ4Stream^ LZ4Stream::CreateDecompressor(Stream^ innerStream, LZ4StreamMode streamMode, bool leaveInnerStreamOpen) {
 		if (innerStream == nullptr) { throw gcnew ArgumentNullException("innerStream"); }
 
 		LZ4Stream^ result = gcnew LZ4Stream();
+		result->_streamMode = streamMode;
 		result->_innerStream = innerStream;
 		result->_compressionMode = CompressionMode::Decompress;
 		result->_leaveInnerStreamOpen = leaveInnerStreamOpen;
@@ -73,10 +76,12 @@ namespace lz4 {
 	}
 
 	LZ4Stream::~LZ4Stream() {
-		if (CanWrite) { WriteEndFrame(); }
+		if (_compressionMode == CompressionMode::Compress && _streamMode == LZ4StreamMode::Write) { WriteEndFrameInternal(); }
+
 		if (!_leaveInnerStreamOpen) {
 			delete _innerStream;
 		}
+
 		this->!LZ4Stream();
 	}
 
@@ -132,7 +137,7 @@ namespace lz4 {
 	}
 
 	bool LZ4Stream::Get_CanRead() {
-		return _compressionMode == CompressionMode::Decompress;
+		return _streamMode == LZ4StreamMode::Read;
 	}
 
 	bool LZ4Stream::Get_CanSeek() {
@@ -140,7 +145,7 @@ namespace lz4 {
 	}
 
 	bool LZ4Stream::Get_CanWrite() {
-		return _compressionMode == CompressionMode::Compress;
+		return _streamMode == LZ4StreamMode::Write;
 	}
 
 	long long LZ4Stream::Get_Length() {
@@ -160,12 +165,28 @@ namespace lz4 {
 	}
 
 	void LZ4Stream::Flush() {
-		if (_inputBufferOffset > 0 && CanWrite) { FlushCurrentBlock(false); }
+		if (_compressionMode == CompressionMode::Compress && _streamMode == LZ4StreamMode::Write && _inputBufferOffset > 0) { FlushCurrentBlock(false); }
 	}
 
 	void LZ4Stream::WriteEndFrame() {
-		if (!CanWrite) { throw gcnew NotSupportedException("Write"); }
+		if (!(_compressionMode == CompressionMode::Compress && _streamMode == LZ4StreamMode::Write)) { throw gcnew NotSupportedException("Only supported in compress mode with a write mode stream"); }
+		WriteEndFrameInternal();
+	}
 
+	void LZ4Stream::WriteHeaderData(array<byte>^ buffer, int offset, int count)
+	{
+		if (_streamMode == LZ4StreamMode::Read)
+		{
+			Buffer::BlockCopy(buffer, offset, _headerBuffer, _headerBufferSize, count);
+			_headerBufferSize += count;
+		}
+		else
+		{
+			_innerStream->Write(buffer, offset, count);
+		}
+	}
+
+	void LZ4Stream::WriteEndFrameInternal() {
 		if (!_hasWrittenInitialStartFrame) {
 			//WriteEmptyFrame();
 			return;
@@ -188,7 +209,7 @@ namespace lz4 {
 		b[1] = 0;
 		b[2] = 0;
 		b[3] = 0; // 0x80
-		_innerStream->Write(b, 0, b->Length);
+		WriteHeaderData(b, 0, b->Length);
 
 		if ((_checksumMode & LZ4FrameChecksumMode::Content) == LZ4FrameChecksumMode::Content) {
 			U32 xxh = XXH32_digest(_contentHashState);
@@ -198,7 +219,7 @@ namespace lz4 {
 			b[1] = (byte)((xxh >> 8) & 0xFF);
 			b[2] = (byte)((xxh >> 16) & 0xFF);
 			b[3] = (byte)((xxh >> 24) & 0xFF);
-			_innerStream->Write(b, 0, b->Length);
+			WriteHeaderData(b, 0, b->Length);
 		}
 
 		// reset the stream
@@ -220,7 +241,7 @@ namespace lz4 {
 		magic[1] = 0x22;
 		magic[2] = 0x4D;
 		magic[3] = 0x18;
-		_innerStream->Write(magic, 0, magic->Length);
+		WriteHeaderData(magic, 0, magic->Length);
 
 		// frame descriptor
 		array<byte>^ descriptor = gcnew array<byte>(2); // if _storeContentSize +8
@@ -275,12 +296,14 @@ namespace lz4 {
 		pin_ptr<byte> descriptorPtr = &descriptor[0];
 		U32 xxh = XXH32(descriptorPtr, descriptor->Length, 0);
 
-		_innerStream->Write(descriptor, 0, descriptor->Length);
-		_innerStream->WriteByte((xxh >> 8) & 0xFF);
+		WriteHeaderData(descriptor, 0, descriptor->Length);
+		array<Byte> ^checksumByte = gcnew array<Byte>(1);
+		checksumByte[0] = (xxh >> 8) & 0xFF;
+		WriteHeaderData(checksumByte, 0, 1);
 	}
 
 	void LZ4Stream::WriteEmptyFrame() {
-		if (!CanWrite) { throw gcnew NotSupportedException("Write"); }
+		if (_compressionMode != CompressionMode::Compress) { throw gcnew NotSupportedException("Only supported in compress mode"); }
 
 		if (_hasWrittenStartFrame || _hasWrittenInitialStartFrame) {
 			throw gcnew InvalidOperationException("should not have happend, hasWrittenStartFrame: " + _hasWrittenStartFrame + ", hasWrittenInitialStartFrame: " + _hasWrittenInitialStartFrame);
@@ -292,7 +315,7 @@ namespace lz4 {
 		magic[1] = 0x22;
 		magic[2] = 0x4D;
 		magic[3] = 0x18;
-		_innerStream->Write(magic, 0, magic->Length);
+		WriteHeaderData(magic, 0, magic->Length);
 
 		// frame descriptor
 		array<byte>^ descriptor = gcnew array<byte>(2);
@@ -320,19 +343,24 @@ namespace lz4 {
 		pin_ptr<byte> descriptorPtr = &descriptor[0];
 		U32 xxh = XXH32(descriptorPtr, descriptor->Length, 0);
 
-		_innerStream->Write(descriptor, 0, descriptor->Length);
-		_innerStream->WriteByte((xxh >> 8) & 0xFF);
+		WriteHeaderData(descriptor, 0, descriptor->Length);
+		array<Byte> ^checksumByte = gcnew array<Byte>(1);
+		checksumByte[0] = (xxh >> 8) & 0xFF;
+		WriteHeaderData(checksumByte, 0, 1);
 
 		array<byte>^ endMarker = gcnew array<byte>(4);
-		_innerStream->Write(endMarker, 0, endMarker->Length);
+		WriteHeaderData(endMarker, 0, endMarker->Length);
 
 		_hasWrittenInitialStartFrame = true;
 		_frameCount++;
 	}
 
 	void LZ4Stream::WriteUserDataFrame(int id, array<byte>^ buffer, int offset, int count) {
-		if (!CanWrite) { throw gcnew NotSupportedException("Write"); }
+		if (!(_compressionMode == CompressionMode::Compress && _streamMode == LZ4StreamMode::Write)) { throw gcnew NotSupportedException("Only supported in compress mode with a write mode stream"); }
+		WriteUserDataFrameInternal(id, buffer, offset, count);
+	}
 
+	void LZ4Stream::WriteUserDataFrameInternal(int id, array<byte>^ buffer, int offset, int count) {
 		if (id < 0 || id > 15) { throw gcnew ArgumentOutOfRangeException("id"); }
 		else if (buffer == nullptr) { throw gcnew ArgumentNullException("buffer"); }
 		else if (count < 0) { throw gcnew ArgumentOutOfRangeException("count"); }
@@ -345,7 +373,7 @@ namespace lz4 {
 		}
 
 		if (_hasWrittenStartFrame) {
-			WriteEndFrame();
+			WriteEndFrameInternal();
 		}
 
 		// write magic
@@ -450,8 +478,8 @@ namespace lz4 {
 		_inputBufferOffset = 0; // reset before calling WriteEndFrame() !!
 		_blockCount++;
 
-		if (!suppressEndFrame && _maxFrameSize > 0 && _blockCount >= _maxFrameSize) {
-			WriteEndFrame();
+		if (!suppressEndFrame && _maxFrameSize.HasValue && _blockCount >= _maxFrameSize.Value) {
+			WriteEndFrameInternal();
 		}
 
 		// update ringbuffer offset
@@ -561,6 +589,7 @@ namespace lz4 {
 				bytesRead = _innerStream->Read(descriptor, 2, 8);
 				if (bytesRead != 8) { throw gcnew EndOfStreamException("Unexpected end of stream"); }
 
+				_contentSize = 0;
 				for (int i = 9; i >= 2; i--) {
 					_contentSize |= ((unsigned long long)descriptor[i] << (i * 8));
 				}
@@ -730,57 +759,273 @@ namespace lz4 {
 		return true;
 	}
 
-	int LZ4Stream::ReadByte() {
-		if (!CanRead) { throw gcnew NotSupportedException("Read"); }
+	void LZ4Stream::CompressNextBlock() {
 
-		if (_outputBufferOffset >= _outputBufferBlockSize && !AcquireNextBlock())
-			return -1; // that's just end of stream
-		return _outputBuffer[_ringbufferOffset + _outputBufferOffset++];
+		// write at least one start frame
+		//if (!_hasWrittenInitialStartFrame) { WriteStartFrame(); }
+
+		int chunk = _inputBufferSize - _inputBufferOffset;
+		if (chunk == 0) { throw gcnew Exception("should not have happend, Read(): compress, chunk == 0"); }
+
+		// compress 1 block
+		bool streamEnd = false;
+		int bytesRead;
+		do
+		{
+			bytesRead = _innerStream->Read(_inputBuffer, _ringbufferOffset + _inputBufferOffset, chunk);
+			if (bytesRead == 0)
+			{
+				_isCompressed = true;
+				break;
+			}
+			else
+			{
+				_inputBufferOffset += bytesRead;
+				chunk -= bytesRead;
+			}
+		} while (chunk > 0);
+
+		if (_inputBufferOffset == 0) {
+			return;
+		}
+
+		_headerBufferSize = 0;
+		_outputBufferOffset = 0;
+
+		pin_ptr<byte> inputBufferPtr = &_inputBuffer[_ringbufferOffset];
+		pin_ptr<byte> outputBufferPtr = &_outputBuffer[0];
+
+		if (!_hasWrittenStartFrame) {
+			WriteStartFrame();
+		}
+
+		if (_blockMode == LZ4FrameBlockMode::Independent) {
+			// reset the stream { create independently compressed blocks }
+			LZ4_loadDict(_lz4Stream, nullptr, 0);
+		}
+
+		int targetSize;
+		bool isCompressed;
+
+		if ((_checksumMode & LZ4FrameChecksumMode::Content) == LZ4FrameChecksumMode::Content) {
+			XXH_errorcode status = XXH32_update(_contentHashState, inputBufferPtr, _inputBufferOffset);
+			if (status != XXH_errorcode::XXH_OK) {
+				throw gcnew Exception("Failed to update content checksum");
+			}
+		}
+
+		int outputBytes = LZ4_compress_limitedOutput_continue(_lz4Stream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize);
+		if (outputBytes == 0) {
+			// compression failed or output is too large
+
+			// reset the stream [is this necessary??]
+			//LZ4_loadDict(_lz4Stream, nullptr, 0);
+
+			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
+			targetSize = _inputBufferOffset;
+			isCompressed = false;
+		}
+		else if (outputBytes >= _inputBufferOffset) {
+			// compressed size is bigger than input size
+
+			// reset the stream [is this necessary??]
+			//LZ4_loadDict(_lz4Stream, nullptr, 0);
+
+			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
+			targetSize = _inputBufferOffset;
+			isCompressed = false;
+		}
+		else if (outputBytes < 0) {
+			throw gcnew Exception("Compress failed");
+		}
+		else {
+			targetSize = outputBytes;
+			isCompressed = true;
+		}
+
+		array<byte>^ b = gcnew array<byte>(4);
+		_headerBuffer[_headerBufferSize++] = (byte)((unsigned int)targetSize & 0xFF);
+		_headerBuffer[_headerBufferSize++] = (byte)(((unsigned int)targetSize >> 8) & 0xFF);
+		_headerBuffer[_headerBufferSize++] = (byte)(((unsigned int)targetSize >> 16) & 0xFF);
+		_headerBuffer[_headerBufferSize++] = (byte)(((unsigned int)targetSize >> 24) & 0xFF);
+
+		if (!isCompressed) {
+			_headerBuffer[_headerBufferSize - 1] |= 0x80;
+		}
+
+		_outputBufferBlockSize = targetSize;
+		_currentMode = 1;
+	}
+
+	int LZ4Stream::CompressData(array<Byte>^ buffer, int offset, int count)
+	{
+		// _currentMode == 0 -> frame start
+		// _currentMode == 1 -> copy header data
+		// _currentMode == 2 -> block data
+		// _currentMode == 3 -> copy header data after block
+
+		int consumed = 0;
+		if (_currentMode == 0)
+		{
+			if (!_isCompressed) {
+				CompressNextBlock();
+			}
+			else if (_hasWrittenStartFrame){
+				WriteEndFrameInternal();
+				_currentMode = 4;
+			}
+			else {
+				return consumed;
+			}
+		}
+		else if (_currentMode == 1)
+		{
+			if (_headerBufferSize == 0) { throw gcnew Exception("should not have happend, Read(): compress, _headerBufferSize == 0"); }
+			int chunk = consumed = Math::Min(_headerBufferSize - _outputBufferOffset, count);
+			Buffer::BlockCopy(_headerBuffer, _outputBufferOffset, buffer, offset, chunk);
+			_outputBufferOffset += chunk;
+			if (_outputBufferOffset == _headerBufferSize) {
+				_outputBufferOffset = 0;
+				_currentMode = 2;
+			}
+		}
+		else if (_currentMode == 2)
+		{
+			if (_outputBufferBlockSize == 0) { throw gcnew Exception("should not have happend, Read(): compress, _outputBufferBlockSize == 0"); }
+			int chunk = consumed = Math::Min(_outputBufferBlockSize - _outputBufferOffset, count);
+			Buffer::BlockCopy(_outputBuffer, _outputBufferOffset, buffer, offset, chunk);
+			_outputBufferOffset += chunk;
+			if (_outputBufferOffset == _outputBufferBlockSize) {
+				_inputBufferOffset = 0; // reset before calling WriteEndFrame() !!
+				_blockCount++;
+				_currentMode = 3;
+			}
+		}
+		else if (_currentMode == 3)
+		{
+			_currentMode = 0;
+
+			_headerBufferSize = 0;
+			_outputBufferOffset = 0;
+
+			if ((_checksumMode & LZ4FrameChecksumMode::Block) == LZ4FrameChecksumMode::Block) {
+
+				pin_ptr<byte> targetPtr = &_outputBuffer[0];
+				U32 xxh = XXH32(targetPtr, _outputBufferBlockSize, 0);
+
+				_headerBuffer[_headerBufferSize++] = (byte)(xxh & 0xFF);
+				_headerBuffer[_headerBufferSize++] = (byte)((xxh >> 8) & 0xFF);
+				_headerBuffer[_headerBufferSize++] = (byte)((xxh >> 16) & 0xFF);
+				_headerBuffer[_headerBufferSize++] = (byte)((xxh >> 24) & 0xFF);
+				_currentMode = 4;
+			}
+
+			if (_maxFrameSize.HasValue && _blockCount >= _maxFrameSize.Value) {
+				WriteEndFrameInternal();
+				_currentMode = 4;
+			}
+
+			// update ringbuffer offset
+			_ringbufferOffset += _inputBufferSize;
+			// wraparound the ringbuffer offset
+			if (_ringbufferOffset > _inputBufferSize) _ringbufferOffset = 0;
+		}
+		else if (_currentMode == 4)
+		{
+			if (_headerBufferSize == 0) { throw gcnew Exception("should not have happend, Read(): compress, _headerBufferSize == 0"); }
+			int chunk = consumed = Math::Min(_headerBufferSize - _outputBufferOffset, count);
+			Buffer::BlockCopy(_headerBuffer, _outputBufferOffset, buffer, offset, chunk);
+			_outputBufferOffset += chunk;
+			if (_outputBufferOffset == _headerBufferSize) {
+				_outputBufferOffset = 0;
+				_headerBufferSize = 0;
+				_currentMode = 0;
+			}
+		}
+		else {
+			throw gcnew Exception("should not have happend, Read(): compress, _currentmode == " + _currentMode);
+		}
+
+		if (consumed < count) { return consumed + CompressData(buffer, offset + consumed, count - consumed); }
+		return consumed;
+	}
+
+	int LZ4Stream::ReadByte() {
+		if (_streamMode != LZ4StreamMode::Read) { throw gcnew NotSupportedException("Read"); }
+
+		if (_compressionMode == CompressionMode::Decompress) {
+			if (_outputBufferOffset >= _outputBufferBlockSize && !AcquireNextBlock()) {
+				return -1; // end of stream
+			}
+			return _outputBuffer[_ringbufferOffset + _outputBufferOffset++];
+		}
+		else {
+			array<Byte> ^data = gcnew array<Byte>(1);
+			int x = CompressData(data, 0, 1);
+			if (x == 0) {
+				return -1; // stream end
+			}
+			return data[0];
+		}
 	}
 
 	int LZ4Stream::Read(array<byte>^ buffer, int offset, int count) {
-		if (!CanRead) { throw gcnew NotSupportedException("Read"); }
+		if (_streamMode != LZ4StreamMode::Read) { throw gcnew NotSupportedException("Read"); }
 		else if (buffer == nullptr) { throw gcnew ArgumentNullException("buffer"); }
 		else if (offset < 0) { throw gcnew ArgumentOutOfRangeException("offset"); }
 		else if (count < 0) { throw gcnew ArgumentOutOfRangeException("count"); }
 		else if (offset + count > buffer->Length) { throw gcnew ArgumentOutOfRangeException("offset+count"); }
 
-		int total = 0;
-		while (count > 0)
-		{
-			int chunk = Math::Min(count, _outputBufferBlockSize - _outputBufferOffset);
-			if (chunk > 0)
+		if (_compressionMode == CompressionMode::Decompress) {
+			int total = 0;
+			while (count > 0)
 			{
-				Buffer::BlockCopy(_outputBuffer, _ringbufferOffset + _outputBufferOffset, buffer, offset, chunk);
+				int chunk = Math::Min(count, _outputBufferBlockSize - _outputBufferOffset);
+				if (chunk > 0)
+				{
+					Buffer::BlockCopy(_outputBuffer, _ringbufferOffset + _outputBufferOffset, buffer, offset, chunk);
 
-				_outputBufferOffset += chunk;
-				offset += chunk;
-				count -= chunk;
-				total += chunk;
+					_outputBufferOffset += chunk;
+					offset += chunk;
+					count -= chunk;
+					total += chunk;
+				}
+				else
+				{
+					if (!AcquireNextBlock()) break;
+				}
 			}
-			else
-			{
-				if (!AcquireNextBlock()) break;
-			}
+			return total;
 		}
-		return total;
+		else {
+			return CompressData(buffer, offset, count);
+		}
 	}
 
 	void LZ4Stream::WriteByte(byte value) {
-		if (!CanWrite) { throw gcnew NotSupportedException("Write"); }
+		if (_streamMode != LZ4StreamMode::Write) { throw gcnew NotSupportedException("Write"); }
 
-		if (!_hasWrittenStartFrame) { WriteStartFrame(); }
-
-		if (_inputBufferOffset >= _inputBufferSize)
+		if (_compressionMode == CompressionMode::Compress)
 		{
-			FlushCurrentBlock(false);
-		}
+			if (!_hasWrittenStartFrame) { WriteStartFrame(); }
 
-		_inputBuffer[_ringbufferOffset + _inputBufferOffset++] = value;
+			if (_inputBufferOffset >= _inputBufferSize)
+			{
+				FlushCurrentBlock(false);
+			}
+
+			_inputBuffer[_ringbufferOffset + _inputBufferOffset++] = value;
+		}
+		else
+		{
+			array<Byte> ^b = gcnew array<Byte>(1);
+			b[0] = value;
+			DecompressData(b, 0, 1);
+		}
 	}
 
 	void LZ4Stream::Write(array<byte>^ buffer, int offset, int count) {
-		if (!CanWrite) { throw gcnew NotSupportedException("Write"); }
+		if (_streamMode != LZ4StreamMode::Write) { throw gcnew NotSupportedException("Write"); }
 		else if (buffer == nullptr) { throw gcnew ArgumentNullException("buffer"); }
 		else if (offset < 0) { throw gcnew ArgumentOutOfRangeException("offset"); }
 		else if (count < 0) { throw gcnew ArgumentOutOfRangeException("count"); }
@@ -788,23 +1033,412 @@ namespace lz4 {
 
 		if (count == 0) { return; }
 
-		if (!_hasWrittenStartFrame) { WriteStartFrame(); }
-
-		while (count > 0)
+		if (_compressionMode == CompressionMode::Compress)
 		{
-			int chunk = Math::Min(count, _inputBufferSize - _inputBufferOffset);
-			if (chunk > 0)
-			{
-				Buffer::BlockCopy(buffer, offset, _inputBuffer, _ringbufferOffset + _inputBufferOffset, chunk);
+			if (!_hasWrittenStartFrame) { WriteStartFrame(); }
 
-				offset += chunk;
-				count -= chunk;
-				_inputBufferOffset += chunk;
-			}
-			else
+			while (count > 0)
 			{
-				FlushCurrentBlock(false);
+				int chunk = Math::Min(count, _inputBufferSize - _inputBufferOffset);
+				if (chunk > 0)
+				{
+					Buffer::BlockCopy(buffer, offset, _inputBuffer, _ringbufferOffset + _inputBufferOffset, chunk);
+
+					offset += chunk;
+					count -= chunk;
+					_inputBufferOffset += chunk;
+				}
+				else
+				{
+					FlushCurrentBlock(false);
+				}
 			}
 		}
+		else
+		{
+			DecompressData(buffer, offset, count);
+		}
+	}
+
+	void LZ4Stream::DecompressData(array<Byte>^ data, int offset, int count)
+	{
+		int consumed;
+		if (_currentMode >= 0 && _currentMode <= 4) {
+			consumed = DecompressHeader(data, offset, count);
+		}
+		else if (_currentMode == 5) {
+			// user data frame
+			int l = _outputBuffer->Length;
+			int remaining = l - _outputBufferOffset;
+			int chunk = consumed = Math::Min(remaining, count);
+			Buffer::BlockCopy(data, offset, _outputBuffer, _outputBufferOffset, chunk);
+			_outputBufferOffset += chunk;
+			remaining = l - _outputBufferOffset;
+			if (remaining == 0) {
+				int id = (_headerBuffer[0] & 0xF);
+
+				array<Byte>^ userData = gcnew array<Byte>(l);
+				Buffer::BlockCopy(_outputBuffer, 0, userData, 0, l);
+				LZ4UserDataFrameEventArgs^ e = gcnew LZ4UserDataFrameEventArgs(id, userData);
+				UserDataFrameRead(this, e);
+
+				_headerBufferSize = 0;
+				_currentMode = 0;
+			}
+		}
+		else if (_currentMode >= 6 && _currentMode <= 10) {
+			// lz4 frame
+			consumed = DecompressBlock(data, offset, count);
+		}
+		else {
+			throw gcnew Exception("should not have happend, Write(): decompress, _currentmode == " + _currentMode);
+		}
+
+		if (consumed < count) { DecompressData(data, offset + consumed, count - consumed); }
+	}
+
+	int LZ4Stream::DecompressBlock(array<Byte>^ data, int offset, int count)
+	{
+		int consumed = 0;
+		if (_currentMode == 6) {
+			for (int i = _headerBufferSize, ii = 0; i < 4 && ii < count; i++, ii++) {
+				_headerBuffer[i] = data[offset + ii];
+				_headerBufferSize++;
+				consumed++;
+			}
+
+			if (_headerBufferSize == 4) {
+
+				_isCompressed = true;
+				if ((_headerBuffer[3] & 0x80) == 0x80) {
+					_isCompressed = false;
+					_headerBuffer[3] &= 0x7F;
+				}
+
+				unsigned int blockSize = 0;
+				for (int i = 3; i >= 0; i--) {
+					blockSize |= ((unsigned int)_headerBuffer[i] << (i * 8));
+				}
+
+				if (blockSize > (unsigned int)_outputBufferSize) {
+					throw gcnew Exception("Block size exceeds maximum block size");
+				}
+
+				if (blockSize == 0) {
+					// end marker
+
+					if ((_checksumMode & LZ4FrameChecksumMode::Content) == LZ4FrameChecksumMode::Content) {
+						_headerBufferSize = 0;
+						_currentMode = 7;
+					}
+					else {
+						_headerBufferSize = 0;
+						_currentMode = 0;
+					}
+					return consumed;
+				}
+
+				_targetBufferSize = blockSize;
+				_inputBufferOffset = 0;
+				_currentMode = 8;
+			}
+		}
+		else if (_currentMode == 7) {
+			for (int i = _headerBufferSize, ii = 0; i < 4 && ii < count; i++, ii++) {
+				_headerBuffer[i] = data[offset + ii];
+				_headerBufferSize++;
+				consumed++;
+			}
+
+			if (_headerBufferSize == 4) {
+
+				// calculate hash
+				U32 xxh = XXH32_digest(_contentHashState);
+
+				if (_headerBuffer[0] != (byte)(xxh & 0xFF) ||
+					_headerBuffer[1] != (byte)((xxh >> 8) & 0xFF) ||
+					_headerBuffer[2] != (byte)((xxh >> 16) & 0xFF) ||
+					_headerBuffer[3] != (byte)((xxh >> 24) & 0xFF)) {
+					throw gcnew Exception("Content checksum did not match");
+				}
+
+				_headerBufferSize = 0;
+				_currentMode = 0;
+			}
+		}
+		else if (_currentMode == 8) {
+
+			int remaining = _targetBufferSize - _inputBufferOffset;
+
+			int chunk = consumed = Math::Min(remaining, count);
+			Buffer::BlockCopy(data, offset, _inputBuffer, _inputBufferOffset, chunk);
+			_inputBufferOffset += chunk;
+			remaining = _targetBufferSize - _inputBufferOffset;
+			if (remaining == 0) {
+
+				_blockCount++;
+
+				if ((_checksumMode & LZ4FrameChecksumMode::Block) == LZ4FrameChecksumMode::Block) {
+					_headerBufferSize = 0;
+					_currentMode = 9;
+				}
+				else {
+					_currentMode = 10;
+				}
+			}
+		}
+		else if (_currentMode == 9) {
+			// block checksum
+			for (int i = _headerBufferSize, ii = 0; i < 4 && ii < count; i++, ii++) {
+				_headerBuffer[i] = data[offset + ii];
+				_headerBufferSize++;
+				consumed++;
+			}
+
+			if (_headerBufferSize == 4) {
+				unsigned int checksum = 0;
+				for (int i = 3; i >= 0; i--) {
+					checksum |= ((unsigned int)_headerBuffer[i] << (i * 8));
+				}
+				// verify checksum
+				pin_ptr<byte> targetPtr = &_inputBuffer[0];
+				U32 xxh = XXH32(targetPtr, _targetBufferSize, 0);
+				if (checksum != xxh) {
+					throw gcnew Exception("Block checksum did not match");
+				}
+
+				_currentMode = 10;
+			}
+		}
+		else if (_currentMode == 10) {
+			// update ringbuffer offset
+			_ringbufferOffset += _outputBufferSize;
+			// wraparound the ringbuffer offset
+			if (_ringbufferOffset > _outputBufferSize) _ringbufferOffset = 0;
+
+			if (!_isCompressed) {
+				Buffer::BlockCopy(_inputBuffer, 0, _outputBuffer, _ringbufferOffset, _targetBufferSize);
+				_outputBufferBlockSize = _targetBufferSize;
+			}
+			else {
+				pin_ptr<byte> inputPtr = &_inputBuffer[0];
+				pin_ptr<byte> outputPtr = &_outputBuffer[_ringbufferOffset];
+				int decompressedSize = LZ4_decompress_safe_continue(_lz4DecodeStream, (char *)inputPtr, (char *)outputPtr, _targetBufferSize, _outputBufferSize);
+				if (decompressedSize <= 0) {
+					throw gcnew Exception("Decompress failed");
+				}
+				_outputBufferBlockSize = decompressedSize;
+			}
+
+			_innerStream->Write(_outputBuffer, _ringbufferOffset, _outputBufferBlockSize);
+
+			if ((_checksumMode & LZ4FrameChecksumMode::Content) == LZ4FrameChecksumMode::Content) {
+				pin_ptr<byte> contentPtr = &_outputBuffer[_ringbufferOffset];
+				XXH_errorcode status = XXH32_update(_contentHashState, contentPtr, _outputBufferBlockSize);
+				if (status != XXH_errorcode::XXH_OK) {
+					throw gcnew Exception("Failed to update content checksum");
+				}
+			}
+
+			_headerBufferSize = 0;
+			_outputBufferOffset = 0;
+			_currentMode = 6;
+		}
+		else {
+			throw gcnew Exception("should not have happend, Write(): decompress, _currentmode == " + _currentMode);
+		}
+
+		return consumed;
+	}
+
+	int LZ4Stream::DecompressHeader(array<Byte>^ data, int offset, int count)
+	{
+		// _currentMode == 0 -> no data
+		// _currentMode == 1 -> lz4 frame magic
+		// _currentMode == 2 -> user frame magic
+		// _currentMode == 3 -> checksum
+		// _currentMode == 4 -> lz4 content size
+		// _currentMode == 5 -> user frame size		
+		// _currentMode == 6 -> frame data
+		// _currentMode == 7 -> content checksum
+		// _currentMode == 8 -> block data
+		// _currentMode == 9 -> block checksum
+		// _currentMode == 10 -> decompress block
+
+		int consumed = 0;
+		if (_currentMode == 0) {
+			for (int i = _headerBufferSize, ii = 0; i < 4 && ii < count; i++, ii++) {
+				_headerBuffer[i] = data[offset + ii];
+				_headerBufferSize++;
+				consumed++;
+			}
+
+			if (_headerBufferSize == 4) {
+				_blockCount = 0;
+				if (_headerBuffer[0] == 0x04 && _headerBuffer[1] == 0x22 && _headerBuffer[2] == 0x4D && _headerBuffer[3] == 0x18) {
+					// expect 2 byte descriptor
+					_currentMode = 1;
+				}
+				else if (_headerBuffer[0] >= 0x50 && _headerBuffer[0] <= 0x5f && _headerBuffer[1] == 0x2A && _headerBuffer[2] == 0x4D && _headerBuffer[3] == 0x18) {
+					_currentMode = 2;
+				}
+				else {
+					throw gcnew Exception("Invalid magic: 0x" + _headerBuffer[0].ToString("x2") + _headerBuffer[1].ToString("x2") + _headerBuffer[2].ToString("x2") + _headerBuffer[3].ToString("x2"));
+				}
+			}
+		}
+		else if (_currentMode == 1)
+		{
+			for (int i = _headerBufferSize, ii = 0; i < 6 && ii < count; i++, ii++) {
+				_headerBuffer[i] = data[offset + ii];
+				_headerBufferSize++;
+				consumed++;
+			}
+
+			if (_headerBufferSize == 6) {
+				_frameCount++;
+
+				// reset state
+				XXH32_reset(_contentHashState, 0);
+				_blockSize = LZ4FrameBlockSize::Max64KB;
+				_blockMode = LZ4FrameBlockMode::Linked;
+				_checksumMode = LZ4FrameChecksumMode::None;
+				_contentSize = 0;
+				_outputBufferOffset = 0;
+				_outputBufferBlockSize = 0;
+				//_ringbufferOffset = 0;
+
+				// verify version
+				if ((_headerBuffer[4] & 0x40) != 0x40 || (_headerBuffer[4] & 0x80) != 0x00) {
+					throw gcnew Exception("Unexpected frame version");
+				}
+				else if ((_headerBuffer[4] & 0x01) != 0x00) {
+					throw gcnew Exception("Predefined dictionaries are not supported");
+				}
+				else if ((_headerBuffer[4] & 0x02) != 0x00) {
+					// reserved value
+					throw gcnew Exception("Header contains unexpected value");
+				}
+
+				if ((_headerBuffer[4] & 0x04) == 0x04) {
+					_checksumMode = _checksumMode | LZ4FrameChecksumMode::Content;
+				}
+				bool hasContentSize = false;
+				if ((_headerBuffer[4] & 0x08) == 0x08) {
+					hasContentSize = true;
+				}
+				if ((_headerBuffer[4] & 0x10) == 0x10) {
+					_checksumMode = _checksumMode | LZ4FrameChecksumMode::Block;
+				}
+				if ((_headerBuffer[4] & 0x20) == 0x20) {
+					_blockMode = LZ4FrameBlockMode::Independent;
+				}
+
+				if ((_headerBuffer[5] & 0x0F) != 0x00) {
+					// reserved value
+					throw gcnew Exception("Header contains unexpected value");
+				}
+				else if ((_headerBuffer[5] & 0x80) != 0x00) {
+					// reserved value
+					throw gcnew Exception("Header contains unexpected value");
+				}
+
+				int blockSizeId = (_headerBuffer[5] & 0x70) >> 4;
+				if (blockSizeId == 4) {
+					_blockSize = LZ4FrameBlockSize::Max64KB;
+					_inputBufferSize = 64 KB;
+					_outputBufferSize = 64 KB;
+				}
+				else if (blockSizeId == 5) {
+					_blockSize = LZ4FrameBlockSize::Max256KB;
+					_inputBufferSize = 256 KB;
+					_outputBufferSize = 256 KB;
+				}
+				else if (blockSizeId == 6) {
+					_blockSize = LZ4FrameBlockSize::Max1MB;
+					_inputBufferSize = 1 MB;
+					_outputBufferSize = 1 MB;
+				}
+				else if (blockSizeId == 7) {
+					_blockSize = LZ4FrameBlockSize::Max4MB;
+					_inputBufferSize = 4 MB;
+					_outputBufferSize = 4 MB;
+				}
+				else {
+					throw gcnew Exception("Unsupported block size: " + blockSizeId);
+				}
+
+				// resize buffers
+				_inputBuffer = gcnew array<byte>(_inputBufferSize);
+				_outputBuffer = gcnew array<byte>(2 * _outputBufferSize);
+
+				if (hasContentSize) {
+					// expect 8 more bytes
+					_currentMode = 4;
+				}
+				else {
+					_currentMode = 3;
+				}
+			}
+		}
+		else if (_currentMode == 4)
+		{
+			for (int i = _headerBufferSize, ii = 0; i < 8 && ii < count; i++, ii++) {
+				_headerBuffer[i] = data[offset + ii];
+				_headerBufferSize++;
+				consumed++;
+			}
+
+			if (_headerBufferSize == 8) {
+
+				_contentSize = 0;
+				for (int i = 9; i >= 2; i--) {
+					_contentSize |= ((unsigned long long)_headerBuffer[i] << (i * 8));
+				}
+
+				_currentMode = 3;
+			}
+		}
+		else if (_currentMode == 3)
+		{
+			_headerBuffer[_headerBufferSize++] = data[offset];
+
+			// verify checksum
+			pin_ptr<byte> descriptorPtr = &_headerBuffer[4];
+			U32 xxh = XXH32(descriptorPtr, _headerBufferSize - 5, 0);
+			byte checksumByte = (xxh >> 8) & 0xFF;
+			if (_headerBuffer[_headerBufferSize - 1] != checksumByte) {
+				throw gcnew Exception("Frame checksum is invalid");
+			}
+
+			_headerBufferSize = 0;
+			_currentMode = 6;
+			consumed = 1;
+		}
+		else if (_currentMode == 2)
+		{
+			for (int i = _headerBufferSize, ii = 0; i < 8 && ii < count; i++, ii++) {
+				_headerBuffer[i] = data[offset + ii];
+				_headerBufferSize++;
+				consumed++;
+			}
+
+			if (_headerBufferSize == 8) {
+
+				_frameCount++;
+
+				unsigned int frameSize = 0;
+				for (int i = _headerBufferSize - 1; i >= 4; i--) {
+					frameSize |= ((unsigned int)_headerBuffer[i] << (i * 8));
+				}
+
+				_outputBufferSize = frameSize;
+				_outputBufferOffset = 0;
+				_outputBuffer = gcnew array<byte>(_outputBufferSize);
+				_currentMode = 5;
+			}
+		}
+
+		return consumed;
 	}
 }
