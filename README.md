@@ -34,24 +34,32 @@ Example:
 
 ```csharp
   // compress data [with content checksum]
-  using (LZ4Stream stream = LZ4Stream.CreateCompressor(innerStream, LZ4FrameBlockMode.Linked, LZ4FrameBlockSize.Max64KB, LZ4FrameChecksumMode.Content, -1, false)) {
+  using (LZ4Stream stream = LZ4Stream.CreateCompressor(innerStream, LZ4StreamMode.Write, LZ4FrameBlockMode.Linked, LZ4FrameBlockSize.Max64KB, LZ4FrameChecksumMode.Content, null, false)) {
     // write uncompressed data to the lz4 stream
 	// the stream will compress the data and write it to the innerStream
 	stream.Write(buffer, 0, buffer.Length);	
   }
   
   // compress data [with block and content checksum, start a new frame after 100 data blocks]
-  using (LZ4Stream stream = LZ4Stream.CreateCompressor(innerStream, LZ4FrameBlockMode.Linked, LZ4FrameBlockSize.Max64KB, LZ4FrameChecksumMode.Block | LZ4FrameChecksumMode.Content, 100, false)) {
+  // note: the lz4 command line tools do NOT support block checksums currently
+  using (LZ4Stream stream = LZ4Stream.CreateCompressor(innerStream, LZ4StreamMode.Write, LZ4FrameBlockMode.Linked, LZ4FrameBlockSize.Max64KB, LZ4FrameChecksumMode.Block | LZ4FrameChecksumMode.Content, 100, false)) {
     // write uncompressed data to the lz4 stream
 	// the stream will compress the data and write it to the innerStream
 	stream.Write(buffer, 0, buffer.Length);	
   }
   
-  // decompress data
-  using (LZ4Stream stream = LZ4Stream.CreateDecompressor(innerStream, false)) {
+  // decompress data (in read mode)
+  using (LZ4Stream stream = LZ4Stream.CreateDecompressor(innerStream, LZ4StreamMode.Read, false)) {
     // the lz4 stream will read the compressed data from the innerStream
     // and return the uncompressed data in 'buffer'
-	int bytesRead = stream.Read(buffer, 0, buffer.Length)
+	int bytesRead = stream.Read(buffer, 0, buffer.Length);
+  }
+  
+  // decompress data (in write mode)
+  using (LZ4Stream stream = LZ4Stream.CreateDecompressor(innerStream, LZ4StreamMode.Write, false)) {
+    // the lz4 stream will decompress the data from 'buffer'
+	// and write the uncompressed data to the 'innerStream'
+	stream.Write(buffer, 0, buffer.Length);
   }
 ```
 
