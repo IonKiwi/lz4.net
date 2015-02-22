@@ -109,10 +109,10 @@ namespace lz4.AnyCPU.loader {
 			var eaHandlerP2 = Expression.Parameter(eventArgsType);
 
 			var eaIdProperty = eventArgsType.GetProperty("Id", BindingFlags.Public | BindingFlags.Instance);
-			var eaIdMethod = eaIdProperty.GetMethod;
+			var eaIdMethod = eaIdProperty.GetGetMethod(false);
 			var eaIdCallExpression = Expression.Call(eaHandlerP2, eaIdMethod);
 			var eaDataProperty = eventArgsType.GetProperty("Data", BindingFlags.Public | BindingFlags.Instance);
-			var eaDataMethod = eaDataProperty.GetMethod;
+			var eaDataMethod = eaDataProperty.GetGetMethod(false);
 			var eaDataCallExpression = Expression.Call(eaHandlerP2, eaDataMethod);
 			var ea = typeof(LZ4UserDataFrameEventArgs).GetConstructor(BindingFlags.Public | BindingFlags.Instance, null, new Type[] { typeof(int), typeof(byte[]) }, null);
 			var newEA = Expression.New(ea, eaIdCallExpression, eaDataCallExpression);
@@ -328,7 +328,7 @@ namespace lz4.AnyCPU.loader {
 			}
 			else {
 				// load from GAC
-				return Assembly.Load(new AssemblyName("lz4, Version=1.0.2.0, Culture=neutral, PublicKeyToken=7aa3c636ef56b77f"));
+				return Assembly.Load(new AssemblyName("lz4, Version=1.0.4.0, Culture=neutral, PublicKeyToken=7aa3c636ef56b77f"));
 			}
 		}
 	}
