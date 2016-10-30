@@ -105,6 +105,7 @@ namespace lz4 {
 		bool _hasFrameInfo = false;
 		unsigned long long _contentSize = 0;
 		long long _frameCount = 0;
+		bool _interactiveRead = false;
 
 		array<byte>^ _inputBuffer = nullptr;
 		array<byte>^ _outputBuffer = nullptr;
@@ -162,6 +163,15 @@ namespace lz4 {
 		void WriteUserDataFrame(int id, array<byte>^ buffer, int offset, int count);
 
 		event EventHandler<LZ4UserDataFrameEventArgs^>^ UserDataFrameRead;
+
+		property bool InteractiveRead {
+			bool get() {
+				return _interactiveRead;
+			}
+			void set(bool value) {
+				_interactiveRead = value;
+			}
+		}
 
 		property long long FrameCount {
 			long long get() {

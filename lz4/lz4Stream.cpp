@@ -946,7 +946,7 @@ namespace lz4 {
 			throw gcnew Exception("should not have happend, Read(): compress, _currentmode == " + _currentMode);
 		}
 
-		if (consumed < count) { return consumed + CompressData(buffer, offset + consumed, count - consumed); }
+		if (!_interactiveRead && consumed < count) { return consumed + CompressData(buffer, offset + consumed, count - consumed); }
 		return consumed;
 	}
 
@@ -989,6 +989,9 @@ namespace lz4 {
 					offset += chunk;
 					count -= chunk;
 					total += chunk;
+					if (_interactiveRead) {
+						break;
+					}
 				}
 				else
 				{

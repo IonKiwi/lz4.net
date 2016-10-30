@@ -48,6 +48,11 @@ namespace lz4 {
 			get { return LZ4Loader.FrameCount()(_innerStream); }
 		}
 
+		public bool InteractiveRead {
+			get { return LZ4Loader.GetInteractiveRead()(_innerStream); }
+			set { LZ4Loader.SetInteractiveRead()(_innerStream, value); }
+		}
+
 		public void WriteEndFrame() {
 			LZ4Loader.WriteEndFrame()(_innerStream);
 		}

@@ -45,7 +45,7 @@ namespace lz4 {
 		_compressionMode = compressionMode;
 		_leaveInnerStreamOpen = leaveInnerStreamOpen;
 		_blockSize = 64 KB;
-		_ringbufferSlots = 2; // created linked blocks (up to LZ4 window size, which is 64 KB)
+		_ringbufferSlots = 2; // create linked blocks (up to LZ4 window size, which is 64 KB)
 		InitRingbuffer();
 	}
 
@@ -61,7 +61,7 @@ namespace lz4 {
 		_leaveInnerStreamOpen = leaveInnerStreamOpen;
 		_blockSize = blockSize;
 
-		int ringbufferSlots = 2; // created linked blocks (up to LZ4 window size, which is 64 KB)
+		int ringbufferSlots = 2; // create linked blocks (up to LZ4 window size, which is 64 KB)
 		if (blockSize < 64 KB) {
 			ringbufferSlots = (int)Math::Ceiling(2 * 64 KB / blockSize);
 		}
@@ -237,6 +237,9 @@ namespace lz4 {
 				offset += chunk;
 				count -= chunk;
 				total += chunk;
+				if (_interactiveRead) {
+					break;
+				}
 			}
 			else
 			{

@@ -50,6 +50,7 @@ namespace lz4 {
 		LZ4_stream_t *_lz4Stream = nullptr;
 		LZ4_streamDecode_t *_lz4DecodeStream = nullptr;
 		bool _leaveInnerStreamOpen;
+		bool _interactiveRead = false;
 		//array<byte>^ _tmpBuffer = nullptr;
 		//int _tmpBufferSize = 0;
 		
@@ -78,6 +79,15 @@ namespace lz4 {
 		LZ4MinimalFrameFormatStream(Stream^ innerStream, CompressionMode compressionMode, int blockSize, int ringbufferSlots, bool leaveInnerStreamOpen);
 		~LZ4MinimalFrameFormatStream();
 		!LZ4MinimalFrameFormatStream();
+
+		property bool InteractiveRead {
+			bool get() {
+				return _interactiveRead;
+			}
+			void set(bool value) {
+				_interactiveRead = value;
+			}
+		}
 
 		property virtual bool CanRead {
 			bool get() override {

@@ -101,6 +101,18 @@ namespace lz4.AnyCPU.loader {
 			var fcmce = Expression.Call(fci_c, fcm);
 			_frameCount = Expression.Lambda<Func<Stream, long>>(fcmce, fci).Compile();
 
+			var ir = streamType.GetProperty("InteractiveRead", BindingFlags.Public | BindingFlags.Instance);
+			var iri = Expression.Parameter(typeof(Stream));
+			var iri_c = Expression.Convert(iri, streamType);
+			var irgm = ir.GetGetMethod(false);
+			var irgmce = Expression.Call(iri_c, irgm);
+			_getInteractiveRead = Expression.Lambda<Func<Stream, bool>>(irgmce, iri).Compile();
+
+			var irsma = Expression.Parameter(typeof(bool));
+			var irsm = ir.GetSetMethod(false);
+			var irsmce = Expression.Call(iri_c, irsm, irsma);
+			_setInteractiveRead = Expression.Lambda<Action<Stream, bool>>(irsmce, iri, irsma).Compile();
+
 			var ufe = streamType.GetEvent("UserDataFrameRead", BindingFlags.Public | BindingFlags.Instance);
 			var ufei = Expression.Parameter(typeof(Stream));
 			var efei_c = Expression.Convert(ufei, streamType);
@@ -252,6 +264,18 @@ namespace lz4.AnyCPU.loader {
 		public static Func<Stream, long> FrameCount() {
 			Ensure();
 			return _frameCount;
+		}
+
+		private static Func<Stream, bool> _getInteractiveRead;
+		public static Func<Stream, bool> GetInteractiveRead() {
+			Ensure();
+			return _getInteractiveRead;
+		}
+
+		private static Action<Stream, bool> _setInteractiveRead;
+		public static Action<Stream, bool> SetInteractiveRead() {
+			Ensure();
+			return _setInteractiveRead;
 		}
 
 		private static Func<Stream, LZ4StreamMode, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, Stream> _createCompressor;
