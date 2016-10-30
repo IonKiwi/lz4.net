@@ -201,7 +201,6 @@ namespace lz4.AnyCPU.loader {
 
 		private static void DetectVCRuntime() {
 #if DETECT_VC_RUNTIME
-
 			string disableVCRuntimeCheck = ConfigurationManager.AppSettings["lz4DisableVCRuntimeCheck"] ?? string.Empty;
 			if (string.Equals("true", disableVCRuntimeCheck, StringComparison.OrdinalIgnoreCase) || string.Equals("1", disableVCRuntimeCheck, StringComparison.OrdinalIgnoreCase)) {
 				return;
@@ -209,10 +208,10 @@ namespace lz4.AnyCPU.loader {
 
 			string key;
 			if (IntPtr.Size == 4) {
-				key = "SOFTWARE\\Microsoft\\VisualStudio\\12.0\\VC\\Runtimes\\x86";
+				key = "SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x86";
 			}
 			else if (IntPtr.Size == 8) {
-				key = "SOFTWARE\\Microsoft\\VisualStudio\\12.0\\VC\\Runtimes\\x64";
+				key = "SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64";
 			}
 			else {
 				return;
@@ -231,7 +230,7 @@ namespace lz4.AnyCPU.loader {
 			}
 
 			if (!hasVC) {
-				throw new Exception("The lz4 assembly requires the Microsoft Visual C++ 2013 runtime installed");
+				throw new Exception("The lz4 assembly requires the Microsoft Visual C++ 2015 runtime installed");
 			}
 #endif
 		}
@@ -369,7 +368,7 @@ namespace lz4.AnyCPU.loader {
 			}
 			else {
 				// load from GAC
-				return Assembly.Load(new AssemblyName("lz4, Version=1.0.5.0, Culture=neutral, PublicKeyToken=7aa3c636ef56b77f"));
+				return Assembly.Load(new AssemblyName("lz4, Version=1.0.6.0, Culture=neutral, PublicKeyToken=7aa3c636ef56b77f"));
 			}
 		}
 	}
