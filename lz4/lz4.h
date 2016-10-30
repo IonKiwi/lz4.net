@@ -50,7 +50,7 @@ extern "C" {
 **************************************/
 #define LZ4_VERSION_MAJOR    1    /* for breaking interface changes  */
 #define LZ4_VERSION_MINOR    7    /* for new (non-breaking) interface capabilities */
-#define LZ4_VERSION_RELEASE  0    /* for tweaks, bug-fixes, or development */
+#define LZ4_VERSION_RELEASE  1    /* for tweaks, bug-fixes, or development */
 #define LZ4_VERSION_NUMBER (LZ4_VERSION_MAJOR *100*100 + LZ4_VERSION_MINOR *100 + LZ4_VERSION_RELEASE)
 int LZ4_versionNumber (void);
 
@@ -123,8 +123,8 @@ LZ4_compress_fast() :
     Same as LZ4_compress_default(), but allows to select an "acceleration" factor.
     The larger the acceleration value, the faster the algorithm, but also the lesser the compression.
     It's a trade-off. It can be fine tuned, with each successive value providing roughly +~3% to speed.
-    An acceleration value of "0" means "use Default value" (see lz4.c)
     An acceleration value of "1" is the same as regular LZ4_compress_default()
+    Values <= 0 will be replaced by ACCELERATION_DEFAULT (see lz4.c), which is 1.
 */
 int LZ4_compress_fast (const char* source, char* dest, int sourceSize, int maxDestSize, int acceleration);
 
@@ -146,7 +146,6 @@ LZ4_compress_destSize() :
     into already allocated buffer 'dest' of size 'targetDestSize'.
     This function either compresses the entire 'source' content into 'dest' if it's large enough,
     or fill 'dest' buffer completely with as much data as possible from 'source'.
-    Original idea by WiredTiger team.
         *sourceSizePtr : will be modified to indicate how many bytes where read from 'source' to fill 'dest'.
                          New value is necessarily <= old value.
         return : Nb bytes written into 'dest' (necessarily <= targetDestSize)
