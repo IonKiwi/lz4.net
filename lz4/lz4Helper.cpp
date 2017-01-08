@@ -75,7 +75,7 @@ namespace lz4 {
 		pin_ptr<Byte> outputPtr = &result[offset];
 		byte* outputBytePtr = outputPtr;
 
-		int compressedSize = LZ4_compress((char*)inputBytePtr, (char*)outputBytePtr, inputLength);
+		int compressedSize = LZ4_compress_default((char*)inputBytePtr, (char*)outputBytePtr, inputLength, bufferSize);
 		if (compressedSize <= 0)
 		{
 			throw gcnew Exception("Compression failed");
@@ -108,7 +108,7 @@ namespace lz4 {
 		outputPtr = &result2[offset];
 		outputBytePtr = outputPtr;
 
-		int compressedSize2 = LZ4_compressHC((char *)inputBytePtr, (char *)outputBytePtr, compressedSize);
+		int compressedSize2 = LZ4_compress_HC((char *)inputBytePtr, (char *)outputBytePtr, compressedSize, bufferSize2, 0);
 
 		array<Byte>^ slimResult = gcnew array<Byte>(compressedSize2 + offset);
 		Buffer::BlockCopy(result2, 0, slimResult, 0, compressedSize2 + offset);

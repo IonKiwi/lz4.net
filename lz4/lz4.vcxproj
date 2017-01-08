@@ -136,6 +136,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lz4.h" />
+    <ClInclude Include="lz4opt.h" />
     <ClInclude Include="lz4Stream.h" />
     <ClInclude Include="lz4hc.h" />
     <ClInclude Include="lz4Helper.h" />

@@ -128,7 +128,7 @@ namespace lz4 {
 			// reset the stream { create independently compressed blocks }
 			LZ4_loadDict(_lz4Stream, nullptr, 0);
 		}
-		int outputBytes = LZ4_compress_continue(_lz4Stream, inputPtr, (char *)outputBufferPtr, _inputBufferOffset);
+		int outputBytes = LZ4_compress_fast_continue(_lz4Stream, inputPtr, (char *)outputBufferPtr, _inputBufferOffset, outputBuffer->Length, 1);
 		if (outputBytes <= 0) { throw gcnew Exception("Compress failed"); }
 
 		array<byte>^ b = gcnew array<byte>(4);

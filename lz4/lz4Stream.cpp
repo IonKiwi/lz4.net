@@ -87,7 +87,7 @@ namespace lz4 {
 
 	LZ4Stream::!LZ4Stream() {
 		if (_lz4Stream != nullptr) { LZ4_freeStream(_lz4Stream); _lz4Stream = nullptr; }
-		if (_contentHashState != nullptr) { delete _contentHashState; _contentHashState = nullptr; }
+		if (_contentHashState != nullptr) { XXH32_freeState(_contentHashState); _contentHashState = nullptr; }
 		if (_lz4DecodeStream != nullptr) { LZ4_freeStreamDecode(_lz4DecodeStream); _lz4DecodeStream = nullptr; }
 	}
 
@@ -422,7 +422,7 @@ namespace lz4 {
 			}
 		}
 
-		int outputBytes = LZ4_compress_limitedOutput_continue(_lz4Stream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize);
+		int outputBytes = LZ4_compress_fast_continue(_lz4Stream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize, 1);
 		if (outputBytes == 0) {
 			// compression failed or output is too large
 
@@ -814,7 +814,7 @@ namespace lz4 {
 			}
 		}
 
-		int outputBytes = LZ4_compress_limitedOutput_continue(_lz4Stream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize);
+		int outputBytes = LZ4_compress_fast_continue(_lz4Stream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize, 1);
 		if (outputBytes == 0) {
 			// compression failed or output is too large
 

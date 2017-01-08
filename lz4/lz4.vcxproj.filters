@@ -45,6 +45,9 @@
     <ClInclude Include="lz4Stream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="lz4opt.h">
+      <Filter>Header Files\lz4</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AssemblyInfo.cpp">
