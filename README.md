@@ -1,7 +1,7 @@
 LZ4 for .NET (C++ /CLI)
 =======================
 
-LZ4 has been written by Yann Collet and the original sources can be found on http://code.google.com/p/lz4/  
+LZ4 has been written by Yann Collet and the original sources can be found on https://github.com/lz4/lz4  
 This project contains the original C sources recompiled for (Pure) CLR  
 
 How to use
