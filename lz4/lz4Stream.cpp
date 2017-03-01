@@ -426,8 +426,8 @@ namespace lz4 {
 		if (outputBytes == 0) {
 			// compression failed or output is too large
 
-			// reset the stream [is this necessary??]
-			//LZ4_loadDict(_lz4Stream, nullptr, 0);
+			// reset the stream
+			LZ4_loadDict(_lz4Stream, nullptr, 0);
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;
@@ -436,8 +436,8 @@ namespace lz4 {
 		else if (outputBytes >= _inputBufferOffset) {
 			// compressed size is bigger than input size
 
-			// reset the stream [is this necessary??]
-			//LZ4_loadDict(_lz4Stream, nullptr, 0);
+			// reset the stream
+			LZ4_loadDict(_lz4Stream, nullptr, 0);
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;
@@ -818,8 +818,8 @@ namespace lz4 {
 		if (outputBytes == 0) {
 			// compression failed or output is too large
 
-			// reset the stream [is this necessary??]
-			//LZ4_loadDict(_lz4Stream, nullptr, 0);
+			// reset the stream
+			LZ4_loadDict(_lz4Stream, nullptr, 0);
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;
@@ -828,8 +828,8 @@ namespace lz4 {
 		else if (outputBytes >= _inputBufferOffset) {
 			// compressed size is bigger than input size
 
-			// reset the stream [is this necessary??]
-			//LZ4_loadDict(_lz4Stream, nullptr, 0);
+			// reset the stream
+			LZ4_loadDict(_lz4Stream, nullptr, 0);
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;
