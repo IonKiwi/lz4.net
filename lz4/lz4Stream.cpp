@@ -522,7 +522,7 @@ namespace lz4 {
 			if (bytesRead != descriptor->Length) { throw gcnew EndOfStreamException("Unexpected end of stream"); }
 
 			// verify version
-			if ((descriptor[0] & 0x40) != 0x40 || (descriptor[0] & 0x80) != 0x00) {
+			if (!((descriptor[0] & 0x40) == 0x40 || (descriptor[0] & 0x60) == 0x60) || (descriptor[0] & 0x80) != 0x00) {
 				throw gcnew Exception("Unexpected frame version");
 			}
 			else if ((descriptor[0] & 0x01) != 0x00) {
@@ -870,7 +870,7 @@ namespace lz4 {
 			if (!_isCompressed) {
 				CompressNextBlock();
 			}
-			else if (_hasWrittenStartFrame){
+			else if (_hasWrittenStartFrame) {
 				WriteEndFrameInternal();
 				_currentMode = 4;
 			}
@@ -1312,7 +1312,7 @@ namespace lz4 {
 				//_ringbufferOffset = 0;
 
 				// verify version
-				if ((_headerBuffer[4] & 0x40) != 0x40 || (_headerBuffer[4] & 0x80) != 0x00) {
+				if (!((_headerBuffer[4] & 0x40) == 0x40 || (_headerBuffer[4] & 0x60) == 0x60) || (_headerBuffer[4] & 0x80) != 0x00) {
 					throw gcnew Exception("Unexpected frame version");
 				}
 				else if ((_headerBuffer[4] & 0x01) != 0x00) {
