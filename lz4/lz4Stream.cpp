@@ -727,10 +727,13 @@ namespace lz4 {
 			}
 		}
 
-		// update ringbuffer offset
-		_ringbufferOffset += _outputBufferSize;
-		// wraparound the ringbuffer offset
-		if (_ringbufferOffset > _outputBufferSize) _ringbufferOffset = 0;
+		// preserve previously compressed block data (for LZ4_decompress_safe_continue dictionary [LZ4FrameBlockMode::Linked])
+		if (isCompressed) {
+			// update ringbuffer offset
+			_ringbufferOffset += _outputBufferSize;
+			// wraparound the ringbuffer offset
+			if (_ringbufferOffset > _outputBufferSize) _ringbufferOffset = 0;
+		}
 
 		if (!isCompressed) {
 			Buffer::BlockCopy(_inputBuffer, 0, _outputBuffer, _ringbufferOffset, blockSize);
@@ -1214,10 +1217,13 @@ namespace lz4 {
 			}
 		}
 		else if (_currentMode == 10) {
-			// update ringbuffer offset
-			_ringbufferOffset += _outputBufferSize;
-			// wraparound the ringbuffer offset
-			if (_ringbufferOffset > _outputBufferSize) _ringbufferOffset = 0;
+			// preserve previously compressed block data (for LZ4_decompress_safe_continue dictionary [LZ4FrameBlockMode::Linked])
+			if (_isCompressed) {
+				// update ringbuffer offset
+				_ringbufferOffset += _outputBufferSize;
+				// wraparound the ringbuffer offset
+				if (_ringbufferOffset > _outputBufferSize) _ringbufferOffset = 0;
+			}
 
 			if (!_isCompressed) {
 				Buffer::BlockCopy(_inputBuffer, 0, _outputBuffer, _ringbufferOffset, _targetBufferSize);
