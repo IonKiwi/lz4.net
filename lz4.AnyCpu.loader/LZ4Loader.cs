@@ -353,7 +353,7 @@ namespace lz4.AnyCPU.loader {
 				if (IntPtr.Size == 4) {
 					assemblyResourcePrefix = "lz4.AnyCPU.loader.x86";
 				}
-				else if (IntPtr.Size == 4) {
+				else if (IntPtr.Size == 8) {
 					assemblyResourcePrefix = "lz4.AnyCPU.loader.x64";
 				}
 				else {
