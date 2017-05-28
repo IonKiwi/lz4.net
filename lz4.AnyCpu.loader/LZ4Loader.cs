@@ -10,23 +10,31 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace lz4.AnyCPU.loader {
-	internal static class LZ4Loader {
+
+	public enum LZ4LoaderType {
+		EmbeddedResource,
+		File
+	}
+
+	public static class LZ4Loader {
 
 		private static bool _initialized = false;
 
-		public static void Ensure() {
+		public static LZ4LoaderType LoaderType { get; set; } = LZ4LoaderType.EmbeddedResource;
+
+		internal static void Ensure() {
 			if (!_initialized) {
 				lock (typeof(LZ4Loader)) {
 					if (!_initialized) {
-						InitializeInternal();
+						InitializeInternal(LoaderType);
 						_initialized = true;
 					}
 				}
 			}
 		}
 
-		private static void InitializeInternal() {
-			var asm = LoadLZ4Assembly();
+		private static void InitializeInternal(LZ4LoaderType loaderType) {
+			var asm = LoadLZ4Assembly(loaderType);
 			if (asm == null) { throw new InvalidOperationException("Failed to load lz4 assembly"); }
 
 			var helperType1 = asm.GetType("lz4.LZ4Helper+Custom", true);
@@ -236,108 +244,132 @@ namespace lz4.AnyCPU.loader {
 		}
 
 		private static Action<Stream> _writeEndFrame;
-		public static Action<Stream> WriteEndFrame() {
+		internal static Action<Stream> WriteEndFrame() {
 			Ensure();
 			return _writeEndFrame;
 		}
 
 		private static Action<Stream, int, byte[], int, int> _writeUserDataFrame;
-		public static Action<Stream, int, byte[], int, int> WriteUserDataFrame() {
+		internal static Action<Stream, int, byte[], int, int> WriteUserDataFrame() {
 			Ensure();
 			return _writeUserDataFrame;
 		}
 
 		private static Action<Stream, Action<object, LZ4UserDataFrameEventArgs>> _userFrameEvent;
-		public static Action<Stream, Action<object, LZ4UserDataFrameEventArgs>> UserFrameEvent() {
+		internal static Action<Stream, Action<object, LZ4UserDataFrameEventArgs>> UserFrameEvent() {
 			Ensure();
 			return _userFrameEvent;
 		}
 
 		private static Func<Stream, long> _currentBlockCount;
-		public static Func<Stream, long> CurrentBlockCount() {
+		internal static Func<Stream, long> CurrentBlockCount() {
 			Ensure();
 			return _currentBlockCount;
 		}
 
 		private static Func<Stream, long> _frameCount;
-		public static Func<Stream, long> FrameCount() {
+		internal static Func<Stream, long> FrameCount() {
 			Ensure();
 			return _frameCount;
 		}
 
 		private static Func<Stream, bool> _getInteractiveRead;
-		public static Func<Stream, bool> GetInteractiveRead() {
+		internal static Func<Stream, bool> GetInteractiveRead() {
 			Ensure();
 			return _getInteractiveRead;
 		}
 
 		private static Action<Stream, bool> _setInteractiveRead;
-		public static Action<Stream, bool> SetInteractiveRead() {
+		internal static Action<Stream, bool> SetInteractiveRead() {
 			Ensure();
 			return _setInteractiveRead;
 		}
 
 		private static Func<Stream, LZ4StreamMode, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, Stream> _createCompressor;
-		public static Func<Stream, LZ4StreamMode, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, Stream> CreateCompressor() {
+		internal static Func<Stream, LZ4StreamMode, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, Stream> CreateCompressor() {
 			Ensure();
 			return _createCompressor;
 		}
 
 		private static Func<Stream, LZ4StreamMode, bool, Stream> _createDecompressor;
-		public static Func<Stream, LZ4StreamMode, bool, Stream> CreateDecompressor() {
+		internal static Func<Stream, LZ4StreamMode, bool, Stream> CreateDecompressor() {
 			Ensure();
 			return _createDecompressor;
 		}
 
 		private static Func<byte[], byte[]> _compress1;
-		public static Func<byte[], byte[]> Compress1() {
+		internal static Func<byte[], byte[]> Compress1() {
 			Ensure();
 			return _compress1;
 		}
 
 		private static Func<byte[], int, int, int, byte[]> _compress2;
-		public static Func<byte[], int, int, int, byte[]> Compress2() {
+		internal static Func<byte[], int, int, int, byte[]> Compress2() {
 			Ensure();
 			return _compress2;
 		}
 
 		private static Func<byte[], LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, byte[]> _compress3;
-		public static Func<byte[], LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, byte[]> Compress3() {
+		internal static Func<byte[], LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, byte[]> Compress3() {
 			Ensure();
 			return _compress3;
 		}
 
 		private static Func<byte[], int, int, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, byte[]> _compress4;
-		public static Func<byte[], int, int, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, byte[]> Compress4() {
+		internal static Func<byte[], int, int, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, byte[]> Compress4() {
 			Ensure();
 			return _compress4;
 		}
 
 		private static Func<byte[], byte[]> _decompress1;
-		public static Func<byte[], byte[]> Decompress1() {
+		internal static Func<byte[], byte[]> Decompress1() {
 			Ensure();
 			return _decompress1;
 		}
 
 		private static Func<byte[], int, int, byte[]> _decompress2;
-		public static Func<byte[], int, int, byte[]> Decompress2() {
+		internal static Func<byte[], int, int, byte[]> Decompress2() {
 			Ensure();
 			return _decompress2;
 		}
 
 		private static Func<byte[], byte[]> _decompress3;
-		public static Func<byte[], byte[]> Decompress3() {
+		internal static Func<byte[], byte[]> Decompress3() {
 			Ensure();
 			return _decompress3;
 		}
 
 		private static Func<byte[], int, int, byte[]> _decompress4;
-		public static Func<byte[], int, int, byte[]> Decompress4() {
+		internal static Func<byte[], int, int, byte[]> Decompress4() {
 			Ensure();
 			return _decompress4;
 		}
 
-		private static Assembly LoadLZ4Assembly() {
+		private static Assembly LoadLZ4Assembly(LZ4LoaderType loaderType) {
+
+			if (loaderType == LZ4LoaderType.EmbeddedResource) {
+
+				string assemblyResourcePrefix;
+				if (IntPtr.Size == 4) {
+					assemblyResourcePrefix = "lz4.AnyCPU.loader.x86";
+				}
+				else if (IntPtr.Size == 4) {
+					assemblyResourcePrefix = "lz4.AnyCPU.loader.x64";
+				}
+				else {
+					throw new NotSupportedException(IntPtr.Size.ToString());
+				}
+
+				byte[] assemblyData;
+				byte[] symbolData = null;
+				using (var s = typeof(LZ4Loader).Assembly.GetManifestResourceStream(assemblyResourcePrefix + ".lz4.dll")) {
+					assemblyData = new byte[s.Length];
+					s.Read(assemblyData, 0, assemblyData.Length);
+				}
+
+				return Assembly.Load(assemblyData, symbolData, System.Security.SecurityContextSource.CurrentAppDomain);
+			}
+
 			string path = new Uri(typeof(LZ4Loader).Assembly.CodeBase).LocalPath;
 			int x = path.LastIndexOf('\\');
 			path = path.Substring(0, x);

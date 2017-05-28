@@ -60,6 +60,15 @@
     <Compile Include="LZ4Loader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <EmbeddedResource Include="..\lz4\Release\lz4.dll">
+      <Link>x86\lz4.dll</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\lz4\x64\Release\lz4.dll">
+      <Link>x64\lz4.dll</Link>
+    </EmbeddedResource>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
