@@ -281,7 +281,7 @@ XXH_PUBLIC_API XXH64_hash_t XXH64_hashFromCanonical(const XXH64_canonical_t* src
 #endif
 
 #  ifdef XXH_PRIVATE_API
-#    include "xxhash.c"   /* include xxhash function bodies as `static`, for inlining */
+#    include "xxhash.cpp"   /* include xxhash function bodies as `static`, for inlining */
 #  endif
 
 #endif /* XXH_STATIC_LINKING_ONLY */
