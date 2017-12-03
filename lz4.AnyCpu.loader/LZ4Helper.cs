@@ -29,12 +29,12 @@ namespace lz4 {
 
 		//public static class Frame {
 
-		public static byte[] Compress(byte[] input, LZ4FrameBlockMode blockMode = LZ4FrameBlockMode.Linked, LZ4FrameBlockSize blockSize = LZ4FrameBlockSize.Max1MB, LZ4FrameChecksumMode checksumMode = LZ4FrameChecksumMode.Content, long? maxFrameSize = null) {
-			return LZ4Loader.Compress3()(input, blockMode, blockSize, checksumMode, maxFrameSize);
+		public static byte[] Compress(byte[] input, LZ4FrameBlockMode blockMode = LZ4FrameBlockMode.Linked, LZ4FrameBlockSize blockSize = LZ4FrameBlockSize.Max1MB, LZ4FrameChecksumMode checksumMode = LZ4FrameChecksumMode.Content, long? maxFrameSize = null, bool highCompression = false) {
+			return LZ4Loader.Compress3()(input, blockMode, blockSize, checksumMode, maxFrameSize, highCompression);
 		}
 
-		public static byte[] Compress(byte[] input, int inputOffset, int inputLength, LZ4FrameBlockMode blockMode = LZ4FrameBlockMode.Linked, LZ4FrameBlockSize blockSize = LZ4FrameBlockSize.Max1MB, LZ4FrameChecksumMode checksumMode = LZ4FrameChecksumMode.Content, long? maxFrameSize = null) {
-			return LZ4Loader.Compress4()(input, inputOffset, inputLength, blockMode, blockSize, checksumMode, maxFrameSize);
+		public static byte[] Compress(byte[] input, int inputOffset, int inputLength, LZ4FrameBlockMode blockMode = LZ4FrameBlockMode.Linked, LZ4FrameBlockSize blockSize = LZ4FrameBlockSize.Max1MB, LZ4FrameChecksumMode checksumMode = LZ4FrameChecksumMode.Content, long? maxFrameSize = null, bool highCompression = false) {
+			return LZ4Loader.Compress4()(input, inputOffset, inputLength, blockMode, blockSize, checksumMode, maxFrameSize, highCompression);
 		}
 
 		public static byte[] Decompress(byte[] input) {

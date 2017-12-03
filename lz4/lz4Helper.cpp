@@ -189,7 +189,7 @@ namespace lz4 {
 		return slimResult;
 	}
 
-	array<Byte>^ LZ4Helper::Frame::Compress(array<Byte>^ input, int inputOffset, int inputLength, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, Nullable<long long> maxFrameSize)
+	array<Byte>^ LZ4Helper::Frame::Compress(array<Byte>^ input, int inputOffset, int inputLength, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, Nullable<long long> maxFrameSize, bool highCompression)
 	{
 		if (input == nullptr) {
 			throw gcnew ArgumentNullException("input");
@@ -212,7 +212,7 @@ namespace lz4 {
 			LZ4Stream^ lz4 = nullptr;
 			try
 			{
-				lz4 = LZ4Stream::CreateCompressor(ms, LZ4StreamMode::Write, blockMode, blockSize, checksumMode, maxFrameSize, true);
+				lz4 = LZ4Stream::CreateCompressor(ms, LZ4StreamMode::Write, blockMode, blockSize, checksumMode, maxFrameSize, highCompression, true);
 				lz4->Write(input, inputOffset, inputLength);
 			}
 			finally

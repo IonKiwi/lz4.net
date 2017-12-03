@@ -72,7 +72,7 @@ namespace lz4.AnyCPU.loader {
 			var d2ce = Expression.Call(d2, d2p1, d2p2, d2p3);
 			_decompress2 = Expression.Lambda<Func<byte[], int, int, byte[]>>(d2ce, d2p1, d2p2, d2p3).Compile();
 
-			var cc1 = streamType.GetMethod("CreateCompressor", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(Stream), streamModeType, blockModeType, blockSizeType, checksumType, typeof(long?), typeof(bool) }, null);
+			var cc1 = streamType.GetMethod("CreateCompressor", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(Stream), streamModeType, blockModeType, blockSizeType, checksumType, typeof(long?), typeof(bool), typeof(bool) }, null);
 			var cc1p1 = Expression.Parameter(typeof(Stream));
 			var cc1p2 = Expression.Parameter(typeof(LZ4StreamMode));
 			var cc1p3 = Expression.Parameter(typeof(LZ4FrameBlockMode));
@@ -80,12 +80,13 @@ namespace lz4.AnyCPU.loader {
 			var cc1p5 = Expression.Parameter(typeof(LZ4FrameChecksumMode));
 			var cc1p6 = Expression.Parameter(typeof(long?));
 			var cc1p7 = Expression.Parameter(typeof(bool));
+			var cc1p8 = Expression.Parameter(typeof(bool));
 			var cc1p2_c = Expression.Convert(cc1p2, streamModeType);
 			var cc1p3_c = Expression.Convert(cc1p3, blockModeType);
 			var cc1p4_c = Expression.Convert(cc1p4, blockSizeType);
 			var cc1p5_c = Expression.Convert(cc1p5, checksumType);
-			var cc1ce = Expression.Call(cc1, cc1p1, cc1p2_c, cc1p3_c, cc1p4_c, cc1p5_c, cc1p6, cc1p7);
-			_createCompressor = Expression.Lambda<Func<Stream, LZ4StreamMode, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, Stream>>(cc1ce, cc1p1, cc1p2, cc1p3, cc1p4, cc1p5, cc1p6, cc1p7).Compile();
+			var cc1ce = Expression.Call(cc1, cc1p1, cc1p2_c, cc1p3_c, cc1p4_c, cc1p5_c, cc1p6, cc1p7, cc1p8);
+			_createCompressor = Expression.Lambda<Func<Stream, LZ4StreamMode, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, bool, Stream>>(cc1ce, cc1p1, cc1p2, cc1p3, cc1p4, cc1p5, cc1p6, cc1p7, cc1p8).Compile();
 
 			var cd1 = streamType.GetMethod("CreateDecompressor", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(Stream), streamModeType, typeof(bool) }, null);
 			var cd1p1 = Expression.Parameter(typeof(Stream));
@@ -164,7 +165,7 @@ namespace lz4.AnyCPU.loader {
 			_writeUserDataFrame = Expression.Lambda<Action<Stream, int, byte[], int, int>>(userFrameCallExpression, userFrameP1, userFrameP2, userFrameP3, userFrameP4, userFrameP5).Compile();
 
 
-			var c3 = helperType2.GetMethod("Compress", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(byte[]), blockModeType, blockSizeType, checksumType, typeof(long?) }, null);
+			var c3 = helperType2.GetMethod("Compress", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(byte[]), blockModeType, blockSizeType, checksumType, typeof(long?), typeof(bool) }, null);
 			var c3p1 = Expression.Parameter(typeof(byte[]));
 			var c3p2 = Expression.Parameter(typeof(LZ4FrameBlockMode));
 			var c3p2_c = Expression.Convert(c3p2, blockModeType);
@@ -173,10 +174,11 @@ namespace lz4.AnyCPU.loader {
 			var c3p4 = Expression.Parameter(typeof(LZ4FrameChecksumMode));
 			var c3p4_c = Expression.Convert(c3p4, checksumType);
 			var c3p5 = Expression.Parameter(typeof(long?));
-			var c3ce = Expression.Call(c3, c3p1, c3p2_c, c3p3_c, c3p4_c, c3p5);
-			_compress3 = Expression.Lambda<Func<byte[], LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, byte[]>>(c3ce, c3p1, c3p2, c3p3, c3p4, c3p5).Compile();
+			var c3p6 = Expression.Parameter(typeof(bool));
+			var c3ce = Expression.Call(c3, c3p1, c3p2_c, c3p3_c, c3p4_c, c3p5, c3p6);
+			_compress3 = Expression.Lambda<Func<byte[], LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, byte[]>>(c3ce, c3p1, c3p2, c3p3, c3p4, c3p5, c3p6).Compile();
 
-			var c4 = helperType2.GetMethod("Compress", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(byte[]), typeof(int), typeof(int), blockModeType, blockSizeType, checksumType, typeof(long?) }, null);
+			var c4 = helperType2.GetMethod("Compress", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(byte[]), typeof(int), typeof(int), blockModeType, blockSizeType, checksumType, typeof(long?), typeof(bool) }, null);
 			var c4p1 = Expression.Parameter(typeof(byte[]));
 			var c4p2 = Expression.Parameter(typeof(int));
 			var c4p3 = Expression.Parameter(typeof(int));
@@ -187,8 +189,9 @@ namespace lz4.AnyCPU.loader {
 			var c4p6 = Expression.Parameter(typeof(LZ4FrameChecksumMode));
 			var c4p6_c = Expression.Convert(c4p6, checksumType);
 			var c4p7 = Expression.Parameter(typeof(long?));
-			var c4ce = Expression.Call(c4, c4p1, c4p2, c4p3, c4p4_c, c4p5_c, c4p6_c, c4p7);
-			_compress4 = Expression.Lambda<Func<byte[], int, int, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, byte[]>>(c4ce, c4p1, c4p2, c4p3, c4p4, c4p5, c4p6, c4p7).Compile();
+			var c4p8 = Expression.Parameter(typeof(bool));
+			var c4ce = Expression.Call(c4, c4p1, c4p2, c4p3, c4p4_c, c4p5_c, c4p6_c, c4p7, c4p8);
+			_compress4 = Expression.Lambda<Func<byte[], int, int, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, byte[]>>(c4ce, c4p1, c4p2, c4p3, c4p4, c4p5, c4p6, c4p7, c4p8).Compile();
 
 			var d3 = helperType2.GetMethod("Decompress", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(byte[]) }, null);
 			var d3p1 = Expression.Parameter(typeof(byte[]));
@@ -285,8 +288,8 @@ namespace lz4.AnyCPU.loader {
 			return _setInteractiveRead;
 		}
 
-		private static Func<Stream, LZ4StreamMode, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, Stream> _createCompressor;
-		internal static Func<Stream, LZ4StreamMode, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, Stream> CreateCompressor() {
+		private static Func<Stream, LZ4StreamMode, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, bool, Stream> _createCompressor;
+		internal static Func<Stream, LZ4StreamMode, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, bool, Stream> CreateCompressor() {
 			Ensure();
 			return _createCompressor;
 		}
@@ -309,14 +312,14 @@ namespace lz4.AnyCPU.loader {
 			return _compress2;
 		}
 
-		private static Func<byte[], LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, byte[]> _compress3;
-		internal static Func<byte[], LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, byte[]> Compress3() {
+		private static Func<byte[], LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, byte[]> _compress3;
+		internal static Func<byte[], LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, byte[]> Compress3() {
 			Ensure();
 			return _compress3;
 		}
 
-		private static Func<byte[], int, int, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, byte[]> _compress4;
-		internal static Func<byte[], int, int, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, byte[]> Compress4() {
+		private static Func<byte[], int, int, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, byte[]> _compress4;
+		internal static Func<byte[], int, int, LZ4FrameBlockMode, LZ4FrameBlockSize, LZ4FrameChecksumMode, long?, bool, byte[]> Compress4() {
 			Ensure();
 			return _compress4;
 		}

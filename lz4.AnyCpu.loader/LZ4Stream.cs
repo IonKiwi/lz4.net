@@ -25,8 +25,8 @@ namespace lz4 {
 
 		private LZ4Stream() { }
 
-		public static LZ4Stream CreateCompressor(Stream innerStream, LZ4StreamMode streamMode, LZ4FrameBlockMode blockMode = LZ4FrameBlockMode.Linked, LZ4FrameBlockSize blockSize = LZ4FrameBlockSize.Max1MB, LZ4FrameChecksumMode checksumMode = LZ4FrameChecksumMode.Content, long? maxFrameSize = null, bool leaveInnerStreamOpen = false) {
-			var s = LZ4Loader.CreateCompressor()(innerStream, streamMode, blockMode, blockSize, checksumMode, maxFrameSize, leaveInnerStreamOpen);
+		public static LZ4Stream CreateCompressor(Stream innerStream, LZ4StreamMode streamMode, LZ4FrameBlockMode blockMode = LZ4FrameBlockMode.Linked, LZ4FrameBlockSize blockSize = LZ4FrameBlockSize.Max1MB, LZ4FrameChecksumMode checksumMode = LZ4FrameChecksumMode.Content, long? maxFrameSize = null, bool highCompression = false, bool leaveInnerStreamOpen = false) {
+			var s = LZ4Loader.CreateCompressor()(innerStream, streamMode, blockMode, blockSize, checksumMode, maxFrameSize, highCompression, leaveInnerStreamOpen);
 			var r = new LZ4Stream();
 			r._innerStream = s;
 			return r;

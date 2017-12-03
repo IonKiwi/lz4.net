@@ -31,6 +31,7 @@
 
 #include "lz4Stream.h"
 #include "lz4.h"
+#include "lz4hc.h"
 #include "xxhash.h"
 
 #define KB *(1 <<10)
@@ -44,7 +45,7 @@ namespace lz4 {
 
 	}
 
-	LZ4Stream^ LZ4Stream::CreateCompressor(Stream^ innerStream, LZ4StreamMode streamMode, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, Nullable<long long> maxFrameSize, bool leaveInnerStreamOpen) {
+	LZ4Stream^ LZ4Stream::CreateCompressor(Stream^ innerStream, LZ4StreamMode streamMode, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, Nullable<long long> maxFrameSize, bool highCompression, bool leaveInnerStreamOpen) {
 		if (innerStream == nullptr) { throw gcnew ArgumentNullException("innerStream"); }
 		if (maxFrameSize.HasValue && maxFrameSize.Value <= 0) { throw gcnew ArgumentOutOfRangeException("maxFrameSize"); }
 
@@ -57,6 +58,7 @@ namespace lz4 {
 		result->_blockSize = blockSize;
 		result->_maxFrameSize = maxFrameSize;
 		result->_leaveInnerStreamOpen = leaveInnerStreamOpen;
+		result->_highCompression = highCompression;
 		result->Init();
 
 		return result;
@@ -87,13 +89,19 @@ namespace lz4 {
 
 	LZ4Stream::!LZ4Stream() {
 		if (_lz4Stream != nullptr) { LZ4_freeStream(_lz4Stream); _lz4Stream = nullptr; }
+		if (_lz4HCStream != nullptr) { LZ4_freeStreamHC(_lz4HCStream); _lz4HCStream = nullptr; }
 		if (_contentHashState != nullptr) { XXH32_freeState(_contentHashState); _contentHashState = nullptr; }
 		if (_lz4DecodeStream != nullptr) { LZ4_freeStreamDecode(_lz4DecodeStream); _lz4DecodeStream = nullptr; }
 	}
 
 	void LZ4Stream::Init() {
 		if (_compressionMode == CompressionMode::Compress) {
-			_lz4Stream = LZ4_createStream();
+			if (!_highCompression) {
+				_lz4Stream = LZ4_createStream();
+			}
+			else {
+				_lz4HCStream = LZ4_createStreamHC();
+			}
 
 			switch (_blockSize) {
 			case LZ4FrameBlockSize::Max64KB:
@@ -223,7 +231,12 @@ namespace lz4 {
 		}
 
 		// reset the stream
-		LZ4_loadDict(_lz4Stream, nullptr, 0);
+		if (!_highCompression) {
+			LZ4_loadDict(_lz4Stream, nullptr, 0);
+		}
+		else {
+			LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
+		}
 
 		_hasWrittenStartFrame = false;
 	}
@@ -409,7 +422,12 @@ namespace lz4 {
 
 		if (_blockMode == LZ4FrameBlockMode::Independent) {
 			// reset the stream { create independently compressed blocks }
-			LZ4_loadDict(_lz4Stream, nullptr, 0);
+			if (!_highCompression) {
+				LZ4_loadDict(_lz4Stream, nullptr, 0);
+			}
+			else {
+				LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
+			}
 		}
 
 		int targetSize;
@@ -422,12 +440,23 @@ namespace lz4 {
 			}
 		}
 
-		int outputBytes = LZ4_compress_fast_continue(_lz4Stream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize, 1);
+		int outputBytes;
+		if (!_highCompression) {
+			outputBytes = LZ4_compress_fast_continue(_lz4Stream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize, 1);
+		}
+		else {
+			outputBytes = LZ4_compress_HC_continue(_lz4HCStream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize);
+		}
 		if (outputBytes == 0) {
 			// compression failed or output is too large
 
 			// reset the stream
-			LZ4_loadDict(_lz4Stream, nullptr, 0);
+			if (!_highCompression) {
+				LZ4_loadDict(_lz4Stream, nullptr, 0);
+			}
+			else {
+				LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
+			}
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;
@@ -437,7 +466,12 @@ namespace lz4 {
 			// compressed size is bigger than input size
 
 			// reset the stream
-			LZ4_loadDict(_lz4Stream, nullptr, 0);
+			if (!_highCompression) {
+				LZ4_loadDict(_lz4Stream, nullptr, 0);
+			}
+			else {
+				LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
+			}
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;
@@ -804,7 +838,12 @@ namespace lz4 {
 
 		if (_blockMode == LZ4FrameBlockMode::Independent) {
 			// reset the stream { create independently compressed blocks }
-			LZ4_loadDict(_lz4Stream, nullptr, 0);
+			if (!_highCompression) {
+				LZ4_loadDict(_lz4Stream, nullptr, 0);
+			}
+			else {
+				LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
+			}
 		}
 
 		int targetSize;
@@ -817,12 +856,23 @@ namespace lz4 {
 			}
 		}
 
-		int outputBytes = LZ4_compress_fast_continue(_lz4Stream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize, 1);
+		int outputBytes;
+		if (!_highCompression) {
+			outputBytes = LZ4_compress_fast_continue(_lz4Stream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize, 1);
+		}
+		else {
+			outputBytes = LZ4_compress_HC_continue(_lz4HCStream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize);
+		}
 		if (outputBytes == 0) {
 			// compression failed or output is too large
 
 			// reset the stream
-			LZ4_loadDict(_lz4Stream, nullptr, 0);
+			if (!_highCompression) {
+				LZ4_loadDict(_lz4Stream, nullptr, 0);
+			}
+			else {
+				LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
+			}
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;
@@ -832,7 +882,12 @@ namespace lz4 {
 			// compressed size is bigger than input size
 
 			// reset the stream
-			LZ4_loadDict(_lz4Stream, nullptr, 0);
+			if (!_highCompression) {
+				LZ4_loadDict(_lz4Stream, nullptr, 0);
+			}
+			else {
+				LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
+			}
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;

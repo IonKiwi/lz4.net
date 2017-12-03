@@ -31,6 +31,7 @@
 #pragma once
 
 #include "lz4.h"
+#include "lz4hc.h"
 #include "xxhash.h"
 
 using namespace System;
@@ -99,6 +100,7 @@ namespace lz4 {
 		LZ4FrameChecksumMode _checksumMode = LZ4FrameChecksumMode::None;
 		LZ4StreamMode _streamMode;
 		Nullable<long long> _maxFrameSize = Nullable<long long>();
+		bool _highCompression;
 		bool _leaveInnerStreamOpen;
 		bool _hasWrittenStartFrame = false;
 		bool _hasWrittenInitialStartFrame = false;
@@ -129,6 +131,7 @@ namespace lz4 {
 		int DecompressHeader(array<Byte>^ data, int offset, int count);
 
 		LZ4_stream_t *_lz4Stream = nullptr;
+		LZ4_streamHC_t *_lz4HCStream = nullptr;
 		LZ4_streamDecode_t *_lz4DecodeStream = nullptr;
 		XXH32_state_t *_contentHashState = nullptr;
 
@@ -156,7 +159,7 @@ namespace lz4 {
 		~LZ4Stream();
 		!LZ4Stream();
 
-		static LZ4Stream^ CreateCompressor(Stream^ innerStream, LZ4StreamMode streamMode, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, Nullable<long long> maxFrameSize, bool leaveInnerStreamOpen);
+		static LZ4Stream^ CreateCompressor(Stream^ innerStream, LZ4StreamMode streamMode, LZ4FrameBlockMode blockMode, LZ4FrameBlockSize blockSize, LZ4FrameChecksumMode checksumMode, Nullable<long long> maxFrameSize, bool highCompression, bool leaveInnerStreamOpen);
 		static LZ4Stream^ CreateDecompressor(Stream^ innerStream, LZ4StreamMode streamMode, bool leaveInnerStreamOpen);
 
 		void WriteEndFrame();
