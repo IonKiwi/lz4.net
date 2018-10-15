@@ -84,6 +84,11 @@ namespace lz4 {
 			delete _innerStream;
 		}
 
+		if (_inputBufferHandle.IsAllocated) { _inputBufferHandle.Free(); _inputBufferPtr = nullptr; }
+		if (_outputBufferHandle.IsAllocated) { _outputBufferHandle.Free(); _outputBufferPtr = nullptr; }
+		_inputBuffer = nullptr;
+		_outputBuffer = nullptr;
+
 		this->!LZ4Stream();
 	}
 
@@ -109,24 +114,40 @@ namespace lz4 {
 				_outputBufferSize = 64 KB;
 				_inputBuffer = gcnew array<byte>(2 * _inputBufferSize);
 				_outputBuffer = gcnew array<byte>(_outputBufferSize);
+				_inputBufferHandle = GCHandle::Alloc(_inputBuffer, GCHandleType::Pinned);
+				_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
+				_inputBufferPtr = (char *)(void *)_inputBufferHandle.AddrOfPinnedObject();
+				_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
 				break;
 			case LZ4FrameBlockSize::Max256KB:
 				_inputBufferSize = 256 KB;
 				_outputBufferSize = 256 KB;
 				_inputBuffer = gcnew array<byte>(2 * _inputBufferSize);
 				_outputBuffer = gcnew array<byte>(_outputBufferSize);
+				_inputBufferHandle = GCHandle::Alloc(_inputBuffer, GCHandleType::Pinned);
+				_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
+				_inputBufferPtr = (char *)(void *)_inputBufferHandle.AddrOfPinnedObject();
+				_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
 				break;
 			case LZ4FrameBlockSize::Max1MB:
 				_inputBufferSize = 1 MB;
 				_outputBufferSize = 1 MB;
 				_inputBuffer = gcnew array<byte>(2 * _inputBufferSize);
 				_outputBuffer = gcnew array<byte>(_outputBufferSize);
+				_inputBufferHandle = GCHandle::Alloc(_inputBuffer, GCHandleType::Pinned);
+				_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
+				_inputBufferPtr = (char *)(void *)_inputBufferHandle.AddrOfPinnedObject();
+				_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
 				break;
 			case LZ4FrameBlockSize::Max4MB:
 				_inputBufferSize = 4 MB;
 				_outputBufferSize = 4 MB;
 				_inputBuffer = gcnew array<byte>(2 * _inputBufferSize);
 				_outputBuffer = gcnew array<byte>(_outputBufferSize);
+				_inputBufferHandle = GCHandle::Alloc(_inputBuffer, GCHandleType::Pinned);
+				_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
+				_inputBufferPtr = (char *)(void *)_inputBufferHandle.AddrOfPinnedObject();
+				_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
 				break;
 			default:
 				throw gcnew NotSupportedException(_blockSize.ToString());
@@ -413,8 +434,8 @@ namespace lz4 {
 
 	void LZ4Stream::FlushCurrentBlock(bool suppressEndFrame) {
 
-		pin_ptr<byte> inputBufferPtr = &_inputBuffer[_ringbufferOffset];
-		pin_ptr<byte> outputBufferPtr = &_outputBuffer[0];
+		char* inputBufferPtr = &_inputBufferPtr[_ringbufferOffset];
+		char* outputBufferPtr = &_outputBufferPtr[0];
 
 		if (!_hasWrittenStartFrame) {
 			WriteStartFrame();
@@ -442,10 +463,10 @@ namespace lz4 {
 
 		int outputBytes;
 		if (!_highCompression) {
-			outputBytes = LZ4_compress_fast_continue(_lz4Stream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize, 1);
+			outputBytes = LZ4_compress_fast_continue(_lz4Stream, inputBufferPtr, outputBufferPtr, _inputBufferOffset, _outputBufferSize, 1);
 		}
 		else {
-			outputBytes = LZ4_compress_HC_continue(_lz4HCStream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize);
+			outputBytes = LZ4_compress_HC_continue(_lz4HCStream, inputBufferPtr, outputBufferPtr, _inputBufferOffset, _outputBufferSize);
 		}
 
 		if (outputBytes == 0) {
@@ -500,7 +521,7 @@ namespace lz4 {
 		_innerStream->Write(_outputBuffer, 0, targetSize);
 
 		if ((_checksumMode & LZ4FrameChecksumMode::Block) == LZ4FrameChecksumMode::Block) {
-			pin_ptr<byte> targetPtr = &_outputBuffer[0];
+			void* targetPtr = &_outputBufferPtr[0];
 			U32 xxh = XXH32(targetPtr, targetSize, 0);
 
 			b[0] = (byte)(xxh & 0xFF);
@@ -643,8 +664,18 @@ namespace lz4 {
 			}
 
 			// resize buffers
-			_inputBuffer = gcnew array<byte>(_inputBufferSize);
-			_outputBuffer = gcnew array<byte>(2 * _outputBufferSize);
+			if (_inputBuffer == nullptr || _inputBuffer->Length != _inputBufferSize) {
+				if (_inputBufferHandle.IsAllocated) { _inputBufferHandle.Free(); _inputBufferPtr = nullptr; }
+				_inputBuffer = gcnew array<byte>(_inputBufferSize);
+				_inputBufferHandle = GCHandle::Alloc(_inputBuffer, GCHandleType::Pinned);
+				_inputBufferPtr = (char *)(void *)_inputBufferHandle.AddrOfPinnedObject();
+			}
+			if (_outputBuffer == nullptr || _outputBuffer->Length != 2 * _outputBufferSize) {
+				if (_outputBufferHandle.IsAllocated) { _outputBufferHandle.Free(); _outputBufferPtr = nullptr; }
+				_outputBuffer = gcnew array<byte>(2 * _outputBufferSize);
+				_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
+				_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
+			}
 
 			_hasFrameInfo = true;
 			return true;
@@ -755,7 +786,7 @@ namespace lz4 {
 				checksum |= ((unsigned int)b[i] << (i * 8));
 			}
 			// verify checksum
-			pin_ptr<byte> targetPtr = &_inputBuffer[0];
+			void* targetPtr = &_inputBufferPtr[0];
 			U32 xxh = XXH32(targetPtr, blockSize, 0);
 			if (checksum != xxh) {
 				throw gcnew Exception("Block checksum did not match");
@@ -775,12 +806,12 @@ namespace lz4 {
 			_outputBufferBlockSize = blockSize;
 		}
 		else {
-			pin_ptr<byte> inputPtr = &_inputBuffer[0];
-			pin_ptr<byte> outputPtr = &_outputBuffer[_ringbufferOffset];
-			pin_ptr<byte> dict = &_outputBuffer[currentRingbufferOffset];
+			char* inputPtr = &_inputBufferPtr[0];
+			char* outputPtr = &_outputBufferPtr[_ringbufferOffset];
+			char* dict = &_outputBufferPtr[currentRingbufferOffset];
 			int status;
 			if (_blockCount > 1) {
-				status = LZ4_setStreamDecode(_lz4DecodeStream, (char *)dict, _outputBufferSize);
+				status = LZ4_setStreamDecode(_lz4DecodeStream, dict, _outputBufferSize);
 			}
 			else {
 				status = LZ4_setStreamDecode(_lz4DecodeStream, nullptr, 0);
@@ -788,7 +819,7 @@ namespace lz4 {
 			if (status != 1) {
 				throw gcnew Exception("LZ4_setStreamDecode failed");
 			}
-			int decompressedSize = LZ4_decompress_safe_continue(_lz4DecodeStream, (char *)inputPtr, (char *)outputPtr, blockSize, _outputBufferSize);
+			int decompressedSize = LZ4_decompress_safe_continue(_lz4DecodeStream, inputPtr, outputPtr, blockSize, _outputBufferSize);
 			if (decompressedSize <= 0) {
 				throw gcnew Exception("Decompress failed");
 			}
@@ -796,7 +827,7 @@ namespace lz4 {
 		}
 
 		if ((_checksumMode & LZ4FrameChecksumMode::Content) == LZ4FrameChecksumMode::Content) {
-			pin_ptr<byte> contentPtr = &_outputBuffer[_ringbufferOffset];
+			void* contentPtr = &_outputBufferPtr[_ringbufferOffset];
 			XXH_errorcode status = XXH32_update(_contentHashState, contentPtr, _outputBufferBlockSize);
 			if (status != XXH_errorcode::XXH_OK) {
 				throw gcnew Exception("Failed to update content checksum");
@@ -841,8 +872,8 @@ namespace lz4 {
 		_headerBufferSize = 0;
 		_outputBufferOffset = 0;
 
-		pin_ptr<byte> inputBufferPtr = &_inputBuffer[_ringbufferOffset];
-		pin_ptr<byte> outputBufferPtr = &_outputBuffer[0];
+		char* inputBufferPtr = &_inputBufferPtr[_ringbufferOffset];
+		char* outputBufferPtr = &_outputBufferPtr[0];
 
 		if (!_hasWrittenStartFrame) {
 			WriteStartFrame();
@@ -870,10 +901,10 @@ namespace lz4 {
 
 		int outputBytes;
 		if (!_highCompression) {
-			outputBytes = LZ4_compress_fast_continue(_lz4Stream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize, 1);
+			outputBytes = LZ4_compress_fast_continue(_lz4Stream, inputBufferPtr, outputBufferPtr, _inputBufferOffset, _outputBufferSize, 1);
 		}
 		else {
-			outputBytes = LZ4_compress_HC_continue(_lz4HCStream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize);
+			outputBytes = LZ4_compress_HC_continue(_lz4HCStream, inputBufferPtr, outputBufferPtr, _inputBufferOffset, _outputBufferSize);
 		}
 		if (outputBytes == 0) {
 			// compression failed or output is too large
@@ -985,7 +1016,7 @@ namespace lz4 {
 
 				if ((_checksumMode & LZ4FrameChecksumMode::Block) == LZ4FrameChecksumMode::Block) {
 
-					pin_ptr<byte> targetPtr = &_outputBuffer[0];
+					void* targetPtr = &_outputBufferPtr[0];
 					U32 xxh = XXH32(targetPtr, _outputBufferBlockSize, 0);
 
 					_headerBuffer[_headerBufferSize++] = (byte)(xxh & 0xFF);
@@ -1285,7 +1316,7 @@ namespace lz4 {
 					checksum |= ((unsigned int)_headerBuffer[i] << (i * 8));
 				}
 				// verify checksum
-				pin_ptr<byte> targetPtr = &_inputBuffer[0];
+				void* targetPtr = &_inputBufferPtr[0];
 				U32 xxh = XXH32(targetPtr, _targetBufferSize, 0);
 				if (checksum != xxh) {
 					throw gcnew Exception("Block checksum did not match");
@@ -1308,12 +1339,12 @@ namespace lz4 {
 				_outputBufferBlockSize = _targetBufferSize;
 			}
 			else {
-				pin_ptr<byte> inputPtr = &_inputBuffer[0];
-				pin_ptr<byte> outputPtr = &_outputBuffer[_ringbufferOffset];
-				pin_ptr<byte> dict = &_outputBuffer[currentRingbufferOffset];
+				char* inputPtr = &_inputBufferPtr[0];
+				char* outputPtr = &_outputBufferPtr[_ringbufferOffset];
+				char* dict = &_outputBufferPtr[currentRingbufferOffset];
 				int status;
 				if (_blockCount > 1) {
-					status = LZ4_setStreamDecode(_lz4DecodeStream, (char *)dict, _outputBufferSize);
+					status = LZ4_setStreamDecode(_lz4DecodeStream, dict, _outputBufferSize);
 				}
 				else {
 					status = LZ4_setStreamDecode(_lz4DecodeStream, nullptr, 0);
@@ -1321,7 +1352,7 @@ namespace lz4 {
 				if (status != 1) {
 					throw gcnew Exception("LZ4_setStreamDecode failed");
 				}
-				int decompressedSize = LZ4_decompress_safe_continue(_lz4DecodeStream, (char *)inputPtr, (char *)outputPtr, _targetBufferSize, _outputBufferSize);
+				int decompressedSize = LZ4_decompress_safe_continue(_lz4DecodeStream, inputPtr, outputPtr, _targetBufferSize, _outputBufferSize);
 				if (decompressedSize <= 0) {
 					throw gcnew Exception("Decompress failed");
 				}
@@ -1331,7 +1362,7 @@ namespace lz4 {
 			_innerStream->Write(_outputBuffer, _ringbufferOffset, _outputBufferBlockSize);
 
 			if ((_checksumMode & LZ4FrameChecksumMode::Content) == LZ4FrameChecksumMode::Content) {
-				pin_ptr<byte> contentPtr = &_outputBuffer[_ringbufferOffset];
+				void* contentPtr = &_outputBufferPtr[_ringbufferOffset];
 				XXH_errorcode status = XXH32_update(_contentHashState, contentPtr, _outputBufferBlockSize);
 				if (status != XXH_errorcode::XXH_OK) {
 					throw gcnew Exception("Failed to update content checksum");
@@ -1467,8 +1498,18 @@ namespace lz4 {
 				}
 
 				// resize buffers
-				_inputBuffer = gcnew array<byte>(_inputBufferSize);
-				_outputBuffer = gcnew array<byte>(2 * _outputBufferSize);
+				if (_inputBuffer == nullptr || _inputBuffer->Length != _inputBufferSize) {
+					if (_inputBufferHandle.IsAllocated) { _inputBufferHandle.Free(); _inputBufferPtr = nullptr; }
+					_inputBuffer = gcnew array<byte>(_inputBufferSize);
+					_inputBufferHandle = GCHandle::Alloc(_inputBuffer, GCHandleType::Pinned);
+					_inputBufferPtr = (char *)(void *)_inputBufferHandle.AddrOfPinnedObject();
+				}
+				if (_outputBuffer == nullptr || _outputBuffer->Length != 2 * _outputBufferSize) {
+					if (_outputBufferHandle.IsAllocated) { _outputBufferHandle.Free(); _outputBufferPtr = nullptr; }
+					_outputBuffer = gcnew array<byte>(2 * _outputBufferSize);
+					_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
+					_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
+				}
 
 				if (hasContentSize) {
 					// expect 8 more bytes
@@ -1532,7 +1573,10 @@ namespace lz4 {
 
 				_outputBufferSize = frameSize;
 				_outputBufferOffset = 0;
+				if (_outputBufferHandle.IsAllocated) { _outputBufferHandle.Free(); _outputBufferPtr = nullptr; }
 				_outputBuffer = gcnew array<byte>(_outputBufferSize);
+				_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
+				_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
 				_currentMode = 5;
 			}
 		}

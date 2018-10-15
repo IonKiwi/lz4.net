@@ -37,6 +37,7 @@
 using namespace System;
 using namespace System::IO;
 using namespace System::IO::Compression;
+using namespace System::Runtime::InteropServices;
 
 namespace lz4 {
 
@@ -111,6 +112,10 @@ namespace lz4 {
 
 		array<byte>^ _inputBuffer = nullptr;
 		array<byte>^ _outputBuffer = nullptr;
+		GCHandle _inputBufferHandle;
+		GCHandle _outputBufferHandle;
+		char* _inputBufferPtr;
+		char* _outputBufferPtr;
 		int _outputBufferSize = 0;
 		int _outputBufferOffset = 0;
 		int _outputBufferBlockSize = 0;
