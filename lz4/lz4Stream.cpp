@@ -420,7 +420,7 @@ namespace lz4 {
 			WriteStartFrame();
 		}
 
-		if (_blockMode == LZ4FrameBlockMode::Independent) {
+		if (_blockMode == LZ4FrameBlockMode::Independent || _blockCount == 0) {
 			// reset the stream { create independently compressed blocks }
 			if (!_highCompression) {
 				LZ4_loadDict(_lz4Stream, nullptr, 0);
@@ -447,16 +447,17 @@ namespace lz4 {
 		else {
 			outputBytes = LZ4_compress_HC_continue(_lz4HCStream, (char *)inputBufferPtr, (char *)outputBufferPtr, _inputBufferOffset, _outputBufferSize);
 		}
+
 		if (outputBytes == 0) {
 			// compression failed or output is too large
 
 			// reset the stream
-			if (!_highCompression) {
-				LZ4_loadDict(_lz4Stream, nullptr, 0);
-			}
-			else {
-				LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
-			}
+			//if (!_highCompression) {
+			//	LZ4_loadDict(_lz4Stream, nullptr, 0);
+			//}
+			//else {
+			//	LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
+			//}
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;
@@ -466,12 +467,12 @@ namespace lz4 {
 			// compressed size is bigger than input size
 
 			// reset the stream
-			if (!_highCompression) {
-				LZ4_loadDict(_lz4Stream, nullptr, 0);
-			}
-			else {
-				LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
-			}
+			//if (!_highCompression) {
+			//	LZ4_loadDict(_lz4Stream, nullptr, 0);
+			//}
+			//else {
+			//	LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
+			//}
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;
@@ -764,12 +765,10 @@ namespace lz4 {
 		int currentRingbufferOffset = _ringbufferOffset;
 
 		// preserve previously compressed block data (for LZ4_decompress_safe_continue dictionary [LZ4FrameBlockMode::Linked])
-		if (isCompressed) {
-			// update ringbuffer offset
-			_ringbufferOffset += _outputBufferSize;
-			// wraparound the ringbuffer offset
-			if (_ringbufferOffset > _outputBufferSize) _ringbufferOffset = 0;
-		}
+		// update ringbuffer offset
+		_ringbufferOffset += _outputBufferSize;
+		// wraparound the ringbuffer offset
+		if (_ringbufferOffset > _outputBufferSize) _ringbufferOffset = 0;
 
 		if (!isCompressed) {
 			Buffer::BlockCopy(_inputBuffer, 0, _outputBuffer, _ringbufferOffset, blockSize);
@@ -849,7 +848,7 @@ namespace lz4 {
 			WriteStartFrame();
 		}
 
-		if (_blockMode == LZ4FrameBlockMode::Independent) {
+		if (_blockMode == LZ4FrameBlockMode::Independent || _blockCount == 0) {
 			// reset the stream { create independently compressed blocks }
 			if (!_highCompression) {
 				LZ4_loadDict(_lz4Stream, nullptr, 0);
@@ -880,12 +879,12 @@ namespace lz4 {
 			// compression failed or output is too large
 
 			// reset the stream
-			if (!_highCompression) {
-				LZ4_loadDict(_lz4Stream, nullptr, 0);
-			}
-			else {
-				LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
-			}
+			//if (!_highCompression) {
+			//	LZ4_loadDict(_lz4Stream, nullptr, 0);
+			//}
+			//else {
+			//	LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
+			//}
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;
@@ -895,12 +894,12 @@ namespace lz4 {
 			// compressed size is bigger than input size
 
 			// reset the stream
-			if (!_highCompression) {
-				LZ4_loadDict(_lz4Stream, nullptr, 0);
-			}
-			else {
-				LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
-			}
+			//if (!_highCompression) {
+			//	LZ4_loadDict(_lz4Stream, nullptr, 0);
+			//}
+			//else {
+			//	LZ4_loadDictHC(_lz4HCStream, nullptr, 0);
+			//}
 
 			Buffer::BlockCopy(_inputBuffer, _ringbufferOffset, _outputBuffer, 0, _inputBufferOffset);
 			targetSize = _inputBufferOffset;
@@ -1299,12 +1298,10 @@ namespace lz4 {
 			int currentRingbufferOffset = _ringbufferOffset;
 
 			// preserve previously compressed block data (for LZ4_decompress_safe_continue dictionary [LZ4FrameBlockMode::Linked])
-			if (_isCompressed) {
-				// update ringbuffer offset
-				_ringbufferOffset += _outputBufferSize;
-				// wraparound the ringbuffer offset
-				if (_ringbufferOffset > _outputBufferSize) _ringbufferOffset = 0;
-			}
+			// update ringbuffer offset
+			_ringbufferOffset += _outputBufferSize;
+			// wraparound the ringbuffer offset
+			if (_ringbufferOffset > _outputBufferSize) _ringbufferOffset = 0;
 
 			if (!_isCompressed) {
 				Buffer::BlockCopy(_inputBuffer, 0, _outputBuffer, _ringbufferOffset, _targetBufferSize);
