@@ -761,6 +761,8 @@ namespace lz4 {
 			}
 		}
 
+		int currentRingbufferOffset = _ringbufferOffset;
+
 		// preserve previously compressed block data (for LZ4_decompress_safe_continue dictionary [LZ4FrameBlockMode::Linked])
 		if (isCompressed) {
 			// update ringbuffer offset
@@ -776,6 +778,17 @@ namespace lz4 {
 		else {
 			pin_ptr<byte> inputPtr = &_inputBuffer[0];
 			pin_ptr<byte> outputPtr = &_outputBuffer[_ringbufferOffset];
+			pin_ptr<byte> dict = &_outputBuffer[currentRingbufferOffset];
+			int status;
+			if (_blockCount > 1) {
+				status = LZ4_setStreamDecode(_lz4DecodeStream, (char *)dict, _outputBufferSize);
+			}
+			else {
+				status = LZ4_setStreamDecode(_lz4DecodeStream, nullptr, 0);
+			}
+			if (status != 1) {
+				throw gcnew Exception("LZ4_setStreamDecode failed");
+			}
 			int decompressedSize = LZ4_decompress_safe_continue(_lz4DecodeStream, (char *)inputPtr, (char *)outputPtr, blockSize, _outputBufferSize);
 			if (decompressedSize <= 0) {
 				throw gcnew Exception("Decompress failed");
@@ -1283,6 +1296,8 @@ namespace lz4 {
 			}
 		}
 		else if (_currentMode == 10) {
+			int currentRingbufferOffset = _ringbufferOffset;
+
 			// preserve previously compressed block data (for LZ4_decompress_safe_continue dictionary [LZ4FrameBlockMode::Linked])
 			if (_isCompressed) {
 				// update ringbuffer offset
@@ -1298,6 +1313,17 @@ namespace lz4 {
 			else {
 				pin_ptr<byte> inputPtr = &_inputBuffer[0];
 				pin_ptr<byte> outputPtr = &_outputBuffer[_ringbufferOffset];
+				pin_ptr<byte> dict = &_outputBuffer[currentRingbufferOffset];
+				int status;
+				if (_blockCount > 1) {
+					status = LZ4_setStreamDecode(_lz4DecodeStream, (char *)dict, _outputBufferSize);
+				}
+				else {
+					status = LZ4_setStreamDecode(_lz4DecodeStream, nullptr, 0);
+				}
+				if (status != 1) {
+					throw gcnew Exception("LZ4_setStreamDecode failed");
+				}
 				int decompressedSize = LZ4_decompress_safe_continue(_lz4DecodeStream, (char *)inputPtr, (char *)outputPtr, _targetBufferSize, _outputBufferSize);
 				if (decompressedSize <= 0) {
 					throw gcnew Exception("Decompress failed");
