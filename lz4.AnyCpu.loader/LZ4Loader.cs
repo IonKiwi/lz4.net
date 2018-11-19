@@ -241,7 +241,7 @@ namespace lz4.AnyCPU.loader {
 			}
 
 			if (!hasVC) {
-				throw new Exception("The lz4 assembly requires the Microsoft Visual C++ 2015 runtime installed");
+				throw new Exception("The lz4 assembly requires the Microsoft Visual C++ 2017 runtime installed");
 			}
 #endif
 		}
