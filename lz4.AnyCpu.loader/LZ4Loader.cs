@@ -21,19 +21,20 @@ namespace lz4.AnyCPU.loader {
 		private static bool _initialized = false;
 
 		public static LZ4LoaderType LoaderType { get; set; } = LZ4LoaderType.EmbeddedResource;
+		public static bool IsVCRuntimeCheckEnabled { get; set; } = true;
 
 		internal static void Ensure() {
 			if (!_initialized) {
 				lock (typeof(LZ4Loader)) {
 					if (!_initialized) {
-						InitializeInternal(LoaderType);
+						InitializeInternal(LoaderType, IsVCRuntimeCheckEnabled);
 						_initialized = true;
 					}
 				}
 			}
 		}
 
-		private static void InitializeInternal(LZ4LoaderType loaderType) {
+		private static void InitializeInternal(LZ4LoaderType loaderType, bool isVCRuntimeCheckEnabled) {
 			var asm = LoadLZ4Assembly(loaderType);
 			if (asm == null) { throw new InvalidOperationException("Failed to load lz4 assembly"); }
 
@@ -205,7 +206,10 @@ namespace lz4.AnyCPU.loader {
 			var d4ce = Expression.Call(d4, d4p1, d4p2, d4p3);
 			_decompress4 = Expression.Lambda<Func<byte[], int, int, byte[]>>(d4ce, d4p1, d4p2, d4p3).Compile();
 
-			DetectVCRuntime();
+			if (isVCRuntimeCheckEnabled)
+			{
+				DetectVCRuntime();
+			}
 
 			return;
 		}
