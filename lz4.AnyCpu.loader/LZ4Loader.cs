@@ -22,6 +22,8 @@ namespace lz4.AnyCPU.loader {
 
 		public static LZ4LoaderType LoaderType { get; set; } = LZ4LoaderType.EmbeddedResource;
 
+		public static bool DisableVCRuntimeDetection { get; set; }
+
 		internal static void Ensure() {
 			if (!_initialized) {
 				lock (typeof(LZ4Loader)) {
@@ -205,7 +207,9 @@ namespace lz4.AnyCPU.loader {
 			var d4ce = Expression.Call(d4, d4p1, d4p2, d4p3);
 			_decompress4 = Expression.Lambda<Func<byte[], int, int, byte[]>>(d4ce, d4p1, d4p2, d4p3).Compile();
 
-			DetectVCRuntime();
+			if (!DisableVCRuntimeDetection) {
+				DetectVCRuntime();
+			}
 
 			return;
 		}
