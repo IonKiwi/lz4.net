@@ -233,19 +233,30 @@ namespace lz4.AnyCPU.loader {
 			}
 
 			bool hasVC = false;
+			int major = 0, minor = 0;
 			using (var view32 = Microsoft.Win32.RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, Microsoft.Win32.RegistryView.Registry32)) {
 				using (var k = view32.OpenSubKey(key, false)) {
 					if (k != null) {
-						object x = k.GetValue("Installed", null);
-						if (x is int) {
-							hasVC = ((int)x == 1);
+						object installedKey = k.GetValue("Installed", null);
+						if (installedKey is int installedKeyValue) {
+							hasVC = installedKeyValue == 1;
+							if (hasVC) {
+								object majorKey = k.GetValue("Major", null);
+								object minorKey = k.GetValue("Minor", null);
+								if (majorKey is int majorKeyValue) {
+									major = majorKeyValue;
+								}
+								if (minorKey is int minorKeyValue) {
+									minor = minorKeyValue;
+								}
+							}
 						}
 					}
 				}
 			}
 
-			if (!hasVC) {
-				throw new Exception("The lz4 assembly requires the Microsoft Visual C++ 2017 runtime installed");
+			if (!(hasVC && major == 14 && minor == 20)) {
+				throw new Exception("The lz4 assembly requires the Microsoft Visual C++ 2019 runtime installed");
 			}
 #endif
 		}
