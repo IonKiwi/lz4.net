@@ -1,4 +1,3 @@
-#include "stdafx.h"
 /*
    LZ4 HC - High Compression Mode of LZ4
    Header File
@@ -336,6 +335,9 @@ LZ4LIB_API void LZ4_resetStreamHC (LZ4_streamHC_t* streamHCPtr, int compressionL
 #ifdef LZ4_HC_STATIC_LINKING_ONLY   /* protection macro */
 #ifndef LZ4_HC_SLO_098092834
 #define LZ4_HC_SLO_098092834
+
+#define LZ4_STATIC_LINKING_ONLY   /* LZ4LIB_STATIC_API */
+#include "lz4.h"
 
 #if defined (__cplusplus)
 extern "C" {

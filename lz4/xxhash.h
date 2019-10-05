@@ -1,4 +1,3 @@
-#include "stdafx.h"
 /*
    xxHash - Extremely Fast Hash algorithm
    Header File
