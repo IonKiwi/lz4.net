@@ -255,7 +255,7 @@ namespace lz4.AnyCPU.loader {
 				}
 			}
 
-			if (!(hasVC && major == 14 && minor == 20)) {
+			if (!(hasVC && major == 14 && minor >= 23)) {
 				throw new Exception("The lz4 assembly requires the Microsoft Visual C++ 2019 runtime installed");
 			}
 #endif
