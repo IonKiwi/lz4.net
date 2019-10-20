@@ -848,7 +848,6 @@ namespace lz4 {
 		if (chunk == 0) { throw gcnew Exception("should not have happend, Read(): compress, chunk == 0"); }
 
 		// compress 1 block
-		bool streamEnd = false;
 		int bytesRead;
 		do
 		{
