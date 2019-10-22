@@ -4,6 +4,18 @@ LZ4 for .NET (C++ /CLI)
 LZ4 has been written by Yann Collet and the original sources can be found on https://github.com/lz4/lz4  
 This project contains the original C sources recompiled for (Pure) CLR  
 
+Requirements
+----------------------------
+This project requires the .NET Framework (3.5 and up are supported)  
+This project requires the VC++ redistributable  
+ - .NET 3.5 requires VC++ 2008 redistributable  
+ - .NET 4.0-4.7.2 requires VC++ 2019 16.3 redistributable  
+ 
+ It does _not_ run on .NET Standard or .NET Core  
+ 
+ For a managed, .NET Standard 2.0+ version, that does run on .NET Core see  
+ https://github.com/IonKiwi/lz4.managed
+
 How to use
 ----------------------------
 
@@ -27,7 +39,7 @@ Example:
 
 **streaming**
 
-Streaming version, using the LZ4 Framing Format (v1.4.1).  
+Streaming version, using the LZ4 Framing Format (v1.6.1).  
 The compressed data that this stream creates is readable by the lz4 command line tools.  
 
 Example:  
