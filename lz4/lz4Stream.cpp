@@ -116,8 +116,8 @@ namespace lz4 {
 				_outputBuffer = gcnew array<byte>(_outputBufferSize);
 				_inputBufferHandle = GCHandle::Alloc(_inputBuffer, GCHandleType::Pinned);
 				_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
-				_inputBufferPtr = (char *)(void *)_inputBufferHandle.AddrOfPinnedObject();
-				_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
+				_inputBufferPtr = (char*)(void*)_inputBufferHandle.AddrOfPinnedObject();
+				_outputBufferPtr = (char*)(void*)_outputBufferHandle.AddrOfPinnedObject();
 				break;
 			case LZ4FrameBlockSize::Max256KB:
 				_inputBufferSize = 256 KB;
@@ -126,8 +126,8 @@ namespace lz4 {
 				_outputBuffer = gcnew array<byte>(_outputBufferSize);
 				_inputBufferHandle = GCHandle::Alloc(_inputBuffer, GCHandleType::Pinned);
 				_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
-				_inputBufferPtr = (char *)(void *)_inputBufferHandle.AddrOfPinnedObject();
-				_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
+				_inputBufferPtr = (char*)(void*)_inputBufferHandle.AddrOfPinnedObject();
+				_outputBufferPtr = (char*)(void*)_outputBufferHandle.AddrOfPinnedObject();
 				break;
 			case LZ4FrameBlockSize::Max1MB:
 				_inputBufferSize = 1 MB;
@@ -136,8 +136,8 @@ namespace lz4 {
 				_outputBuffer = gcnew array<byte>(_outputBufferSize);
 				_inputBufferHandle = GCHandle::Alloc(_inputBuffer, GCHandleType::Pinned);
 				_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
-				_inputBufferPtr = (char *)(void *)_inputBufferHandle.AddrOfPinnedObject();
-				_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
+				_inputBufferPtr = (char*)(void*)_inputBufferHandle.AddrOfPinnedObject();
+				_outputBufferPtr = (char*)(void*)_outputBufferHandle.AddrOfPinnedObject();
 				break;
 			case LZ4FrameBlockSize::Max4MB:
 				_inputBufferSize = 4 MB;
@@ -146,8 +146,8 @@ namespace lz4 {
 				_outputBuffer = gcnew array<byte>(_outputBufferSize);
 				_inputBufferHandle = GCHandle::Alloc(_inputBuffer, GCHandleType::Pinned);
 				_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
-				_inputBufferPtr = (char *)(void *)_inputBufferHandle.AddrOfPinnedObject();
-				_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
+				_inputBufferPtr = (char*)(void*)_inputBufferHandle.AddrOfPinnedObject();
+				_outputBufferPtr = (char*)(void*)_outputBufferHandle.AddrOfPinnedObject();
 				break;
 			default:
 				throw gcnew NotSupportedException(_blockSize.ToString());
@@ -331,7 +331,7 @@ namespace lz4 {
 		U32 xxh = XXH32(descriptorPtr, descriptor->Length, 0);
 
 		WriteHeaderData(descriptor, 0, descriptor->Length);
-		array<Byte> ^checksumByte = gcnew array<Byte>(1);
+		array<Byte>^ checksumByte = gcnew array<Byte>(1);
 		checksumByte[0] = (xxh >> 8) & 0xFF;
 		WriteHeaderData(checksumByte, 0, 1);
 	}
@@ -378,7 +378,7 @@ namespace lz4 {
 		U32 xxh = XXH32(descriptorPtr, descriptor->Length, 0);
 
 		WriteHeaderData(descriptor, 0, descriptor->Length);
-		array<Byte> ^checksumByte = gcnew array<Byte>(1);
+		array<Byte>^ checksumByte = gcnew array<Byte>(1);
 		checksumByte[0] = (xxh >> 8) & 0xFF;
 		WriteHeaderData(checksumByte, 0, 1);
 
@@ -646,8 +646,8 @@ namespace lz4 {
 				if (bytesRead != 8) { throw gcnew EndOfStreamException("Unexpected end of stream"); }
 
 				_contentSize = 0;
-				for (int i = 9; i >= 2; i--) {
-					_contentSize |= ((unsigned long long)descriptor[i] << (i * 8));
+				for (int i = 2, ii = 0; i < descriptor->Length; i++, ii++) {
+					_contentSize |= ((unsigned long long)descriptor[i] << (ii * 8));
 				}
 			}
 
@@ -668,13 +668,13 @@ namespace lz4 {
 				if (_inputBufferHandle.IsAllocated) { _inputBufferHandle.Free(); _inputBufferPtr = nullptr; }
 				_inputBuffer = gcnew array<byte>(_inputBufferSize);
 				_inputBufferHandle = GCHandle::Alloc(_inputBuffer, GCHandleType::Pinned);
-				_inputBufferPtr = (char *)(void *)_inputBufferHandle.AddrOfPinnedObject();
+				_inputBufferPtr = (char*)(void*)_inputBufferHandle.AddrOfPinnedObject();
 			}
 			if (_outputBuffer == nullptr || _outputBuffer->Length != 2 * _outputBufferSize) {
 				if (_outputBufferHandle.IsAllocated) { _outputBufferHandle.Free(); _outputBufferPtr = nullptr; }
 				_outputBuffer = gcnew array<byte>(2 * _outputBufferSize);
 				_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
-				_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
+				_outputBufferPtr = (char*)(void*)_outputBufferHandle.AddrOfPinnedObject();
 			}
 
 			_hasFrameInfo = true;
@@ -690,8 +690,8 @@ namespace lz4 {
 			if (bytesRead != b->Length) { throw gcnew EndOfStreamException("Unexpected end of stream"); }
 
 			unsigned int frameSize = 0;
-			for (int i = b->Length - 1; i >= 0; i--) {
-				frameSize |= ((unsigned int)b[i] << (i * 8));
+			for (int i = 0, ii = 0; i < b->Length; i++, ii++) {
+				frameSize |= ((unsigned int)b[i] << (ii * 8));
 			}
 
 			array<byte>^ userData = gcnew array<byte>(frameSize);
@@ -731,8 +731,8 @@ namespace lz4 {
 		}
 
 		unsigned int blockSize = 0;
-		for (int i = b->Length - 1; i >= 0; i--) {
-			blockSize |= ((unsigned int)b[i] << (i * 8));
+		for (int i = 0, ii = 0; i < b->Length; i++, ii++) {
+			blockSize |= ((unsigned int)b[i] << (ii * 8));
 		}
 
 		if (blockSize > (unsigned int)_outputBufferSize) {
@@ -1067,7 +1067,7 @@ namespace lz4 {
 			return _outputBuffer[_ringbufferOffset + _outputBufferOffset++];
 		}
 		else {
-			array<Byte> ^data = gcnew array<Byte>(1);
+			array<Byte>^ data = gcnew array<Byte>(1);
 			int x = CompressData(data, 0, 1);
 			if (x == 0) {
 				return -1; // stream end
@@ -1128,7 +1128,7 @@ namespace lz4 {
 		}
 		else
 		{
-			array<Byte> ^b = gcnew array<Byte>(1);
+			array<Byte>^ b = gcnew array<Byte>(1);
 			b[0] = value;
 			DecompressData(b, 0, 1);
 		}
@@ -1230,8 +1230,8 @@ namespace lz4 {
 				}
 
 				unsigned int blockSize = 0;
-				for (int i = 3; i >= 0; i--) {
-					blockSize |= ((unsigned int)_headerBuffer[i] << (i * 8));
+				for (int i = 0, ii = 0; i < 4; i++, ii++) {
+					blockSize |= ((unsigned int)_headerBuffer[i] << (ii * 8));
 				}
 
 				if (blockSize > (unsigned int)_outputBufferSize) {
@@ -1501,13 +1501,13 @@ namespace lz4 {
 					if (_inputBufferHandle.IsAllocated) { _inputBufferHandle.Free(); _inputBufferPtr = nullptr; }
 					_inputBuffer = gcnew array<byte>(_inputBufferSize);
 					_inputBufferHandle = GCHandle::Alloc(_inputBuffer, GCHandleType::Pinned);
-					_inputBufferPtr = (char *)(void *)_inputBufferHandle.AddrOfPinnedObject();
+					_inputBufferPtr = (char*)(void*)_inputBufferHandle.AddrOfPinnedObject();
 				}
 				if (_outputBuffer == nullptr || _outputBuffer->Length != 2 * _outputBufferSize) {
 					if (_outputBufferHandle.IsAllocated) { _outputBufferHandle.Free(); _outputBufferPtr = nullptr; }
 					_outputBuffer = gcnew array<byte>(2 * _outputBufferSize);
 					_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
-					_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
+					_outputBufferPtr = (char*)(void*)_outputBufferHandle.AddrOfPinnedObject();
 				}
 
 				if (hasContentSize) {
@@ -1521,17 +1521,17 @@ namespace lz4 {
 		}
 		else if (_currentMode == 4)
 		{
-			for (int i = _headerBufferSize, ii = 0; i < 8 && ii < count; i++, ii++) {
+			for (int i = _headerBufferSize, ii = 0; i < 14 && ii < count; i++, ii++) {
 				_headerBuffer[i] = data[offset + ii];
 				_headerBufferSize++;
 				consumed++;
 			}
 
-			if (_headerBufferSize == 8) {
+			if (_headerBufferSize == 14) {
 
 				_contentSize = 0;
-				for (int i = 9; i >= 2; i--) {
-					_contentSize |= ((unsigned long long)_headerBuffer[i] << (i * 8));
+				for (int i = 6, ii = 0; i < 14; i++, ii++) {
+					_contentSize |= ((unsigned long long)_headerBuffer[i] << (ii * 8));
 				}
 
 				_currentMode = 3;
@@ -1566,8 +1566,8 @@ namespace lz4 {
 				_frameCount++;
 
 				unsigned int frameSize = 0;
-				for (int i = _headerBufferSize - 1; i >= 4; i--) {
-					frameSize |= ((unsigned int)_headerBuffer[i] << (i * 8));
+				for (int i = 4, ii = 0; i < 8; i++, ii++) {
+					frameSize |= ((unsigned int)_headerBuffer[i] << (ii * 8));
 				}
 
 				_outputBufferSize = frameSize;
@@ -1575,7 +1575,7 @@ namespace lz4 {
 				if (_outputBufferHandle.IsAllocated) { _outputBufferHandle.Free(); _outputBufferPtr = nullptr; }
 				_outputBuffer = gcnew array<byte>(_outputBufferSize);
 				_outputBufferHandle = GCHandle::Alloc(_outputBuffer, GCHandleType::Pinned);
-				_outputBufferPtr = (char *)(void *)_outputBufferHandle.AddrOfPinnedObject();
+				_outputBufferPtr = (char*)(void*)_outputBufferHandle.AddrOfPinnedObject();
 				_currentMode = 5;
 			}
 		}
