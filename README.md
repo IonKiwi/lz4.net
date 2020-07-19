@@ -11,8 +11,10 @@ This project requires the VC++ redistributable
  - .NET 3.5 requires VC++ 2008 redistributable  
  - .NET 4.0-4.7.2 requires VC++ 2019 16.3 redistributable  
  
- It does _not_ run on .NET Standard or .NET Core  
+ It does ***not*** run on .NET Standard or .NET Core  
  
+ .NET Core
+ ----------------------------
  For a managed, .NET Standard 2.0+ version, that does run on .NET Core see  
  https://github.com/IonKiwi/lz4.managed
 
