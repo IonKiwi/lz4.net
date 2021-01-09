@@ -418,7 +418,7 @@ namespace lz4.AnyCPU.loader {
 			}
 			else {
 				// load from GAC
-				return Assembly.Load(new AssemblyName("lz4, Version=1.0.15.0, Culture=neutral, PublicKeyToken=7aa3c636ef56b77f"));
+				return Assembly.Load(new AssemblyName("lz4, Version=1.0.16.0, Culture=neutral, PublicKeyToken=7aa3c636ef56b77f"));
 			}
 		}
 	}
