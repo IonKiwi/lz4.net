@@ -1,3 +1,4 @@
+#include "stdafx.h"
 /*
 *  xxHash - Fast Hash algorithm
 *  Copyright (C) 2012-2016, Yann Collet
@@ -195,7 +196,7 @@ static U32 XXH_read32(const void* memPtr)
 #  define XXH_rotl64(x,r) ((x << r) | (x >> (64 - r)))
 #endif
 
-#if defined(_MSC_VER)     /* Visual Studio */
+#if defined(_MSC_VER) && !defined(_M_CEE_PURE)     /* Visual Studio */
 #  define XXH_swap32 _byteswap_ulong
 #elif XXH_GCC_VERSION >= 403
 #  define XXH_swap32 __builtin_bswap32
@@ -624,7 +625,7 @@ static U64 XXH_read64(const void* memPtr)
 
 #endif   /* XXH_FORCE_DIRECT_MEMORY_ACCESS */
 
-#if defined(_MSC_VER)     /* Visual Studio */
+#if defined(_MSC_VER) && !defined(_M_CEE_PURE)     /* Visual Studio */
 #  define XXH_swap64 _byteswap_uint64
 #elif XXH_GCC_VERSION >= 403
 #  define XXH_swap64 __builtin_bswap64

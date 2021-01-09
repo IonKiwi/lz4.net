@@ -1,3 +1,4 @@
+#include "stdafx.h"
 /*
     LZ4 HC - High Compression Mode of LZ4
     Copyright (C) 2011-2017, Yann Collet.
@@ -63,7 +64,7 @@
 
 #define LZ4_COMMONDEFS_ONLY
 #ifndef LZ4_SRC_INCLUDED
-#include "lz4.c"   /* LZ4_count, constants, mem */
+#include "lz4.cpp"   /* LZ4_count, constants, mem */
 #endif
 
 

@@ -1,3 +1,4 @@
+#include "stdafx.h"
 /*
    LZ4 - Fast LZ compression algorithm
    Copyright (C) 2011-present, Yann Collet.
@@ -87,7 +88,7 @@
  * LZ4_FORCE_SW_BITCOUNT
  * Define this parameter if your target system or compiler does not support hardware bit count
  */
-#if defined(_MSC_VER) && defined(_WIN32_WCE)   /* Visual Studio for WinCE doesn't support Hardware bit count */
+#if defined(_MSC_VER) && (defined(_WIN32_WCE) || defined(_M_CEE_PURE))   /* Visual Studio for WinCE doesn't support Hardware bit count */
 #  undef  LZ4_FORCE_SW_BITCOUNT  /* avoid double def */
 #  define LZ4_FORCE_SW_BITCOUNT
 #endif
